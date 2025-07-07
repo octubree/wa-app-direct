@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+           <!-- ICONO  -->
+           <title>WhatsApp Directo </title>
+    
+           <!-- Íconos para pantalla de inicio -->
+           <link rel="apple-touch-icon" sizes="180x180" href="https://ik.imagekit.io/tnzquipyu/image.ico?updatedAt=1743559795914">
+           <link rel="icon" type="image/png" sizes="192x192" href="https://ik.imagekit.io/tnzquipyu/image.ico?updatedAt=1743559795914">
+           <meta name="theme-color" content="#25D366">
+           <!-- TERMINA ICONO  -->
+
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+        }
+        #login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #25D366;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: white;
+            text-align: center;
+        }
+        #login-form {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            color: #333;
+            width: 90%;
+            max-width: 320px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        #login-form h2 {
+            margin-top: 0;
+            color: #128C7E;
+        }
+        #login-form p {
+            margin-bottom: 15px;
+            color: #555;
+        }
+        #licenseKey {
+            box-sizing: border-box;
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        #unlock-btn {
+            background: #128C7E;
+            color: white;
+            border: none;
+            padding: 12px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: background 0.3s ease;
+        }
+        #unlock-btn:hover {
+            background: #075E54;
+        }
+        #unlock-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .hidden {
+            display: none !important;
+        }
+        #error-msg {
+            color: red;
+            margin-top: 15px;
+            display: none;
+            font-weight: bold;
+        }
+        #app-content {
+            padding: 20px;
+            text-align: center;
+        }
+        #app-content input[type="tel"] {
+            padding: 10px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 200px;
+        }
+        #app-content button {
+            padding: 10px 15px;
+            background-color: #25D366;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #app-content button:hover {
+            background-color: #128C7E;
+        }
+        .info-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Pantalla de login -->
+    <div id="login-screen">
+        <div id="login-form">
+            <h2>🔒 Verificación de Licencia</h2>
+            <p>Ingresa la clave de licencia que recibiste por email.</p>
+            <input type="text" id="licenseKey" placeholder="Clave de Licencia" autocomplete="off">
+            <button id="unlock-btn">Desbloquear</button>
+            <p id="error-msg">Clave de licencia inválida.</p>
+        </div>
+    </div>
+
+    <!-- Contenido de la app -->
+    <div id="app-content" class="hidden">
+        <h1>WhatsApp Directo </h1>
+        <input type="tel" id="phoneNumber" placeholder="Ej: 099123456">
+        <button id="sendButton">Abrir Chat</button>
+        <p class="info-text">Ingresa número (ej: 099123456 o 9123456)</p>
+        <p style="margin-top:20px; font-size: small; color: grey;">Licencia Verificada</p>
+    </div>
+
+    <script>
+        // --- CONFIGURACIÓN ---
+        const GUMROAD_PRODUCT_PERMALINK = "gffgvj";
+        const GUMROAD_PRODUCT_ID = "M8GK7dTxzHWJoxPaKdorkw==";
+        const CODIGO_PAIS = "598"; // Código de Uruguay
+        const DIGITOS_URUGUAY = 8; 
+        const REVERIFY_DAYS_BEFORE_EXPIRATION = 7; // Días antes de la expiración para forzar re-verificación con Gumroad
+
+        // --- ELEMENTOS DEL DOM ---
+        const loginScreen = document.getElementById('login-screen');
+        const appContent = document.getElementById('app-content');
+        const licenseKeyInput = document.getElementById('licenseKey');
+        const unlockBtn = document.getElementById('unlock-btn');
+        const errorMsg = document.getElementById('error-msg');
+        const phoneInput = document.getElementById('phoneNumber');
+        const sendBtn = document.getElementById('sendButton');
+
+        // --- LÓGICA DE LA APP PRINCIPAL ---
+        function procesarNumeroUruguayo(numero) {
+            let phone = numero.replace(/[^0-9]/g, '');
+            if (phone.startsWith('0')) {
+                phone = phone.substring(1);
+            }
+            if (phone.length !== DIGITOS_URUGUAY) {
+                alert(`Número uruguayo inválido. Debe tener ${DIGITOS_URUGUAY} dígitos.\nEjemplo: 099123456 → 99123456`);
+                return null;
+            }
+            return CODIGO_PAIS + phone;
+        }
+
+        if(sendBtn && phoneInput) {
+            sendBtn.addEventListener('click', () => {
+                const numeroUruguayo = phoneInput.value.trim();
+                if (!numeroUruguayo) {
+                    alert("Por favor, ingresa un número de teléfono uruguayo (ej: 099123456).");
+                    return;
+                }
+                const numeroFinal = procesarNumeroUruguayo(numeroUruguayo);
+                if (numeroFinal) {
+                    window.open(`https://wa.me/${numeroFinal}`, '_blank');
+                }
+            });
+        }
+
+        // --- SISTEMA DE AUTENTICACIÓN CON GUMROAD ---
+        
+        function unlockApp(licenseKey, subscriptionEndsAt = null) {
+            try {
+                // Guardar la clave y la fecha de expiración para futuros usos
+                localStorage.setItem('gumroadLicenseKey', licenseKey);
+                if (subscriptionEndsAt) {
+                    localStorage.setItem('gumroadSubscriptionEndsAt', subscriptionEndsAt);
+                } else {
+                    localStorage.removeItem('gumroadSubscriptionEndsAt'); // Limpiar si no es suscripción
+                }
+                
+                // Ocultar pantalla de login y mostrar la app
+                loginScreen.classList.add('hidden');
+                appContent.classList.remove('hidden');
+            } catch (error) {
+                console.error("Error al guardar la clave o al mostrar la app:", error);
+                alert("Hubo un error al desbloquear la aplicación.");
+            }
+        }
+
+        async function verifyLicense(key) {
+            errorMsg.style.display = 'none';
+            unlockBtn.disabled = true;
+            unlockBtn.textContent = 'Verificando...';
+
+            try {
+                const response = await fetch('https://api.gumroad.com/v2/licenses/verify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        product_permalink: GUMROAD_PRODUCT_PERMALINK,
+                        product_id: GUMROAD_PRODUCT_ID,
+                        license_key: key.trim()
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const purchase = data.purchase;
+                    let subscriptionEndsAt = null;
+                    let isSubscriptionActive = true;
+
+                    if (purchase && purchase.is_recurring) {
+                        // Es una suscripción
+                        if (purchase.subscription_cancelled_at) {
+                            // Suscripción cancelada, verificar si ya expiró
+                            const cancelledDate = new Date(purchase.subscription_cancelled_at);
+                            if (cancelledDate <= new Date()) {
+                                isSubscriptionActive = false; // Ya cancelada y expirada
+                            }
+                        }
+                        if (purchase.subscription_ends_at) {
+                            subscriptionEndsAt = purchase.subscription_ends_at;
+                            const endsAtDate = new Date(subscriptionEndsAt);
+                            if (endsAtDate <= new Date()) {
+                                isSubscriptionActive = false; // Ya expirada
+                            }
+                        }
+                    } else if (purchase && !purchase.is_recurring) {
+                        // Es una compra única, consideramos que siempre está activa si la clave es válida
+                        isSubscriptionActive = true;
+                    }
+
+                    if (isSubscriptionActive) {
+                        unlockApp(key, subscriptionEndsAt);
+                    } else {
+                        errorMsg.textContent = "Tu suscripción ha expirado o ha sido cancelada.";
+                        errorMsg.style.display = 'block';
+                        localStorage.removeItem('gumroadLicenseKey');
+                        localStorage.removeItem('gumroadSubscriptionEndsAt');
+                    }
+                } else {
+                    // La licencia no es válida o no encontrada.
+                    errorMsg.textContent = data.message || "Clave de licencia inválida o no encontrada.";
+                    errorMsg.style.display = 'block';
+                    localStorage.removeItem('gumroadLicenseKey');
+                    localStorage.removeItem('gumroadSubscriptionEndsAt');
+                }
+
+            } catch (error) {
+                console.error('Error de conexión:', error);
+                errorMsg.textContent = 'No se pudo verificar la licencia. Revisa tu conexión a internet.';
+                errorMsg.style.display = 'block';
+            } finally {
+                unlockBtn.disabled = false;
+                unlockBtn.textContent = 'Desbloquear';
+            }
+        }
+        
+        // Verifica si hay una clave guardada al cargar la página
+        function checkSavedLicense() {
+            try {
+                const savedKey = localStorage.getItem('gumroadLicenseKey');
+                const savedEndsAt = localStorage.getItem('gumroadSubscriptionEndsAt');
+                const now = new Date();
+
+                if (savedKey) {
+                    if (savedEndsAt) {
+                        const endsAtDate = new Date(savedEndsAt);
+                        const daysUntilExpiration = Math.ceil((endsAtDate - now) / (1000 * 60 * 60 * 24));
+
+                        if (daysUntilExpiration > REVERIFY_DAYS_BEFORE_EXPIRATION) {
+                            // La suscripción local aún es válida y no necesita re-verificación inmediata
+                            unlockApp(savedKey, savedEndsAt);
+                        } else {
+                            // La suscripción está cerca de expirar o ya expiró localmente, re-verificar con Gumroad
+                            verifyLicense(savedKey);
+                        }
+                    } else {
+                        // Clave guardada pero sin fecha de expiración (compra única o error anterior), verificar con Gumroad
+                        verifyLicense(savedKey);
+                    }
+                } else {
+                    // No hay clave guardada, mostrar pantalla de login
+                    loginScreen.classList.remove('hidden');
+                    appContent.classList.add('hidden');
+                }
+            } catch(error) {
+                console.error("Error al acceder al almacenamiento local o verificar clave guardada:", error);
+                // En caso de error, mostrar pantalla de login para que el usuario intente de nuevo
+                loginScreen.classList.remove('hidden');
+                appContent.classList.add('hidden');
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        unlockBtn.addEventListener('click', () => {
+            const key = licenseKeyInput.value;
+            if (key) {
+                verifyLicense(key);
+            } else {
+                errorMsg.textContent = 'Por favor, introduce tu clave de licencia.';
+                errorMsg.style.display = 'block';
+            }
+        });
+
+        licenseKeyInput.addEventListener('keypress', (e) => {
+            if (errorMsg.style.display === 'block') {
+                errorMsg.style.display = 'none';
+            }
+            if (e.key === 'Enter') {
+                unlockBtn.click(); // Simula el clic en el botón
+            }
+        });
+
+        // --- INICIALIZACIÓN ---
+        checkSavedLicense();
+
+    </script>
+</body>
+</html>
