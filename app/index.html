@@ -116,6 +116,7 @@
     </style>
 </head>
 <body>
+    <!-- ESTE COMENTARIO CERTIFICA QUE ESTOY MODIFICANDO EL ARCHIVO CORRECTO -->
     <!-- Pantalla de login -->
     <div id="login-screen">
         <div id="login-form">
@@ -196,42 +197,39 @@
         }
 
         async function verifyLicense(key) {
-            errorMsg.style.display = 'none';
-            unlockBtn.disabled = true;
-            unlockBtn.textContent = 'Verificando...';
+  errorMsg.style.display = 'none';
+  unlockBtn.disabled = true;
+  unlockBtn.textContent = 'Verificando...';
 
-            try {
-                const response = await fetch('/api/verificar-clave', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        clave: key.trim()
-                    }),
-                });
+  try {
+    const response = await fetch('/api/verificar-clave', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clave: key.trim() }),
+    });
 
-                const data = await response.json();
+    const data = await response.json();
 
-                if (data.success) {
-                    // ¡Éxito! La licencia es válida y ha sido marcada como usada.
-                    unlockApp(key);
-                } else {
-                    // La licencia no es válida o ya fue utilizada.
-                    errorMsg.textContent = data.error || "Clave inválida o ya utilizada.";
-                    errorMsg.style.display = 'block';
-                    localStorage.removeItem('gumroadLicenseKey');
-                }
+    if (response.ok && data.success) {
+      // Éxito: clave válida
+      unlockApp(key);
+    } else {
+      // Falló: mostrar mensaje de error si viene del servidor, o uno genérico
+      errorMsg.textContent = data.error || 'Clave inválida o ya usada.';
+      errorMsg.style.display = 'block';
+      localStorage.removeItem('gumroadLicenseKey');
+      localStorage.removeItem('gumroadSubscriptionEndsAt');
+    }
+  } catch (error) {
+    console.error('Error de conexión:', error);
+    errorMsg.textContent = 'No se pudo verificar la clave. Revisa tu conexión a internet.';
+    errorMsg.style.display = 'block';
+  } finally {
+    unlockBtn.disabled = false;
+    unlockBtn.textContent = 'Desbloquear';
+  }
+}
 
-            } catch (error) {
-                console.error('Error de conexión con el backend:', error);
-                errorMsg.textContent = 'No se pudo verificar la clave. Revisa tu conexión a internet.';
-                errorMsg.style.display = 'block';
-            } finally {
-                unlockBtn.disabled = false;
-                unlockBtn.textContent = 'Desbloquear';
-            }
-        }
         
         // Verifica si hay una clave guardada al cargar la página
         function checkSavedLicense() {
