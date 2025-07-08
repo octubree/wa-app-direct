@@ -138,11 +138,9 @@
 
     <script>
         // --- CONFIGURACIÓN ---
-        const GUMROAD_PRODUCT_PERMALINK = "gffgvj";
-        const GUMROAD_PRODUCT_ID = "M8GK7dTxzHWJoxPaKdorkw==";
         const CODIGO_PAIS = "598"; // Código de Uruguay
         const DIGITOS_URUGUAY = 8; 
-        const REVERIFY_DAYS_BEFORE_EXPIRATION = 7; // Días antes de la expiración para forzar re-verificación con Gumroad
+        const REVERIFY_DAYS_BEFORE_EXPIRATION = 7; // Días antes de la expiración para forzar re-verificación con el backend
 
         // --- ELEMENTOS DEL DOM ---
         const loginScreen = document.getElementById('login-screen');
@@ -180,17 +178,13 @@
             });
         }
 
-        // --- SISTEMA DE AUTENTICACIÓN CON GUMROAD ---
+        // --- SISTEMA DE AUTENTICACIÓN CON BACKEND (VERIFICACIÓN DE CLAVE) ---
         
-        function unlockApp(licenseKey, subscriptionEndsAt = null) {
+        function unlockApp(licenseKey) {
             try {
-                // Guardar la clave y la fecha de expiración para futuros usos
+                // Guardar la clave verificada para futuros usos
                 localStorage.setItem('gumroadLicenseKey', licenseKey);
-                if (subscriptionEndsAt) {
-                    localStorage.setItem('gumroadSubscriptionEndsAt', subscriptionEndsAt);
-                } else {
-                    localStorage.removeItem('gumroadSubscriptionEndsAt'); // Limpiar si no es suscripción
-                }
+                localStorage.removeItem('gumroadSubscriptionEndsAt'); // Limpiar si no es suscripción
                 
                 // Ocultar pantalla de login y mostrar la app
                 loginScreen.classList.add('hidden');
@@ -207,65 +201,31 @@
             unlockBtn.textContent = 'Verificando...';
 
             try {
-                const response = await fetch('https://api.gumroad.com/v2/licenses/verify', {
+                const response = await fetch('/api/verificar-clave', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        product_permalink: GUMROAD_PRODUCT_PERMALINK,
-                        product_id: GUMROAD_PRODUCT_ID,
-                        license_key: key.trim()
+                        clave: key.trim()
                     }),
                 });
 
                 const data = await response.json();
 
                 if (data.success) {
-                    const purchase = data.purchase;
-                    let subscriptionEndsAt = null;
-                    let isSubscriptionActive = true;
-
-                    if (purchase && purchase.is_recurring) {
-                        // Es una suscripción
-                        if (purchase.subscription_cancelled_at) {
-                            // Suscripción cancelada, verificar si ya expiró
-                            const cancelledDate = new Date(purchase.subscription_cancelled_at);
-                            if (cancelledDate <= new Date()) {
-                                isSubscriptionActive = false; // Ya cancelada y expirada
-                            }
-                        }
-                        if (purchase.subscription_ends_at) {
-                            subscriptionEndsAt = purchase.subscription_ends_at;
-                            const endsAtDate = new Date(subscriptionEndsAt);
-                            if (endsAtDate <= new Date()) {
-                                isSubscriptionActive = false; // Ya expirada
-                            }
-                        }
-                    } else if (purchase && !purchase.is_recurring) {
-                        // Es una compra única, consideramos que siempre está activa si la clave es válida
-                        isSubscriptionActive = true;
-                    }
-
-                    if (isSubscriptionActive) {
-                        unlockApp(key, subscriptionEndsAt);
-                    } else {
-                        errorMsg.textContent = "Tu suscripción ha expirado o ha sido cancelada.";
-                        errorMsg.style.display = 'block';
-                        localStorage.removeItem('gumroadLicenseKey');
-                        localStorage.removeItem('gumroadSubscriptionEndsAt');
-                    }
+                    // ¡Éxito! La licencia es válida y ha sido marcada como usada.
+                    unlockApp(key);
                 } else {
-                    // La licencia no es válida o no encontrada.
-                    errorMsg.textContent = data.message || "Clave de licencia inválida o no encontrada.";
+                    // La licencia no es válida o ya fue utilizada.
+                    errorMsg.textContent = data.error || "Clave inválida o ya utilizada.";
                     errorMsg.style.display = 'block';
                     localStorage.removeItem('gumroadLicenseKey');
-                    localStorage.removeItem('gumroadSubscriptionEndsAt');
                 }
 
             } catch (error) {
-                console.error('Error de conexión:', error);
-                errorMsg.textContent = 'No se pudo verificar la licencia. Revisa tu conexión a internet.';
+                console.error('Error de conexión con el backend:', error);
+                errorMsg.textContent = 'No se pudo verificar la clave. Revisa tu conexión a internet.';
                 errorMsg.style.display = 'block';
             } finally {
                 unlockBtn.disabled = false;
@@ -277,25 +237,12 @@
         function checkSavedLicense() {
             try {
                 const savedKey = localStorage.getItem('gumroadLicenseKey');
-                const savedEndsAt = localStorage.getItem('gumroadSubscriptionEndsAt');
                 const now = new Date();
 
                 if (savedKey) {
-                    if (savedEndsAt) {
-                        const endsAtDate = new Date(savedEndsAt);
-                        const daysUntilExpiration = Math.ceil((endsAtDate - now) / (1000 * 60 * 60 * 24));
-
-                        if (daysUntilExpiration > REVERIFY_DAYS_BEFORE_EXPIRATION) {
-                            // La suscripción local aún es válida y no necesita re-verificación inmediata
-                            unlockApp(savedKey, savedEndsAt);
-                        } else {
-                            // La suscripción está cerca de expirar o ya expiró localmente, re-verificar con Gumroad
-                            verifyLicense(savedKey);
-                        }
-                    } else {
-                        // Clave guardada pero sin fecha de expiración (compra única o error anterior), verificar con Gumroad
-                        verifyLicense(savedKey);
-                    }
+                    // Para el modelo de un solo uso, si hay una clave guardada, asumimos que ya fue usada y verificada.
+                    // Si el usuario borra el localStorage, tendrá que reingresar la clave.
+                    unlockApp(savedKey);
                 } else {
                     // No hay clave guardada, mostrar pantalla de login
                     loginScreen.classList.remove('hidden');
