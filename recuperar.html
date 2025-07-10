@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recuperar acceso</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #f8f8f8; }
+    .container { max-width: 400px; margin: auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    input, button { width: 100%; padding: 0.75rem; margin-top: 1rem; font-size: 1rem; }
+    .msg { margin-top: 1rem; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Recuperar acceso</h2>
+    <p>Ingresá el correo con el que compraste la app:</p>
+    <input type="email" id="email" placeholder="tucorreo@example.com" />
+    <button onclick="recuperar()">Recuperar clave</button>
+    <div class="msg" id="mensaje"></div>
+  </div>
+
+  <script>
+    async function recuperar() {
+      const email = document.getElementById('email').value.trim();
+      const mensaje = document.getElementById('mensaje');
+
+      if (!email) {
+        mensaje.textContent = 'Por favor ingresá un correo válido.';
+        return;
+      }
+
+      mensaje.textContent = 'Consultando...';
+
+      try {
+        const res = await fetch('/api/recuperar-clave', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          mensaje.innerHTML = `✅ Nueva clave generada:<br><strong>${data.nuevaClave}</strong>`;
+        } else {
+          mensaje.textContent = `❌ ${data.message}`;
+        }
+      } catch (err) {
+        mensaje.textContent = 'Error de conexión. Intentalo más tarde.';
+      }
+    }
+  </script>
+</body>
+</html>
+
+
+<!--   CODGIO SUGERIDO PARA RECUPERAR CORREO EN FIREBASE PARA DAR UNA NUEVA CLAVE
+
+<script>
+    import admin from 'firebase-admin';
+import { v4 as uuidv4 } from 'uuid';
+
+if (!admin.apps.length) {
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+}
+
+const db = admin.firestore();
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ message: 'Método no permitido' });
+
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ message: 'Email requerido' });
+
+  try {
+    const clavesRef = db.collection('claves');
+    const snapshot = await clavesRef.where('email', '==', email).get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ success: false, message: 'No se encontró ninguna clave asociada a ese correo.' });
+    }
+
+    // Generar una nueva clave única
+    const nuevaClave = uuidv4().split('-')[0].toUpperCase();
+    await clavesRef.doc(nuevaClave).set({
+      usada: false,
+      email: email,
+      recuperada: true,
+      generadaEn: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return res.status(200).json({ success: true, nuevaClave });
+  } catch (error) {
+    console.error('Error al recuperar clave:', error);
+    return res.status(500).json({ success: false, message: 'Error del servidor' });
+  }
+}
+
+</script> -->
