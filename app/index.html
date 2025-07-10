@@ -50,34 +50,32 @@
         /* Contenedor para Input y Botón Pegar */
         .input-wrapper {
             display: flex;
+            gap: 10px; /* Espacio entre el input y el botón */
             margin-bottom: 20px;
+            align-items: center; /* Alinea verticalmente */
         }
         #licenseKey {
             flex-grow: 1;
-            border-top-right-radius: 0;
-            border-bottom-right-radius: 0;
-            border-right: none;
             box-sizing: border-box;
             width: 100%;
             padding: 14px;
             border: 1px solid #ccc;
-            border-radius: 8px;
+            border-radius: 8px; /* Todas las esquinas redondeadas */
             font-size: 16px;
         }
         #paste-btn {
-            padding: 0 15px;
-            border: 1px solid #007bff;
-            background-color: #007bff;
-            color: white;
+            padding: 10px 15px;
+            border: 1px solid black; /* Borde negro como solicitado */
+            background-color: #f0f2f5;
+            color: black;
             cursor: pointer;
-            border-top-right-radius: 8px;
-            border-bottom-right-radius: 8px;
+            border-radius: 8px; /* Todas las esquinas redondeadas */
             font-size: 14px;
             font-weight: bold;
-            border-left: none;
             transition: background-color 0.2s ease;
+            flex-shrink: 0; /* Evita que el botón se encoja */
         }
-        #paste-btn:hover { background-color: #0056b3; }
+        #paste-btn:hover { background-color: #e0e2e5; }
 
         #unlock-btn {
             background: #00a884; color: white; border: none;
