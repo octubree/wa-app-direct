@@ -15,20 +15,15 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
-            background-color: #f0f2f5; /* Un fondo más suave */
+            background-color: #f0f2f5;
         }
-        .hidden {
-            display: none !important;
-        }
+        .hidden { display: none !important; }
 
         /* --- Pantalla de Login --- */
         #login-screen {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #00a884; /* Tono de verde de WhatsApp */
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #00a884;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -47,35 +42,46 @@
             width: 100%;
             max-width: 340px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-            margin-top: -50px; /* Sube el formulario para mejor visibilidad en móviles */
+            margin-top: -50px;
         }
-        #login-form h2 {
-            margin-top: 0;
-            color: #111b21; /* Color de texto oscuro de WhatsApp */
-        }
-        #login-form p {
+        #login-form h2 { margin-top: 0; color: #111b21; }
+        #login-form p { margin-bottom: 20px; color: #667781; }
+        
+        /* Contenedor para Input y Botón Pegar */
+        .input-wrapper {
+            display: flex;
             margin-bottom: 20px;
-            color: #667781;
         }
         #licenseKey {
+            flex-grow: 1;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+            border-right: none;
             box-sizing: border-box;
             width: 100%;
             padding: 14px;
-            margin-bottom: 20px;
             border: 1px solid #ccc;
             border-radius: 8px;
             font-size: 16px;
         }
-        #unlock-btn {
-            background: #00a884;
-            color: white;
-            border: none;
-            padding: 14px 15px;
-            border-radius: 8px;
+        #paste-btn {
+            padding: 0 15px;
+            border: 1px solid #ccc;
+            background-color: #f0f2f5;
             cursor: pointer;
-            font-size: 16px;
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
+            font-size: 14px;
             font-weight: bold;
-            width: 100%;
+            color: #333;
+            border-left: none;
+        }
+        #paste-btn:hover { background-color: #e0e2e5; }
+
+        #unlock-btn {
+            background: #00a884; color: white; border: none;
+            padding: 14px 15px; border-radius: 8px; cursor: pointer;
+            font-size: 16px; font-weight: bold; width: 100%;
             transition: background 0.3s ease;
         }
         #unlock-btn:hover { background: #008a6e; }
@@ -83,75 +89,34 @@
         #error-msg { color: #d93025; margin-top: 15px; display: none; font-weight: bold; }
 
         /* --- Contenido de la App --- */
-        #app-content {
-            padding: 20px;
-            text-align: center;
-            max-width: 480px;
-            margin: 40px auto;
-        }
+        #app-content { padding: 20px; text-align: center; max-width: 480px; margin: 40px auto; }
         #app-content h1 { color: #111b21; }
-        #app-content input[type="tel"] {
-            padding: 12px;
-            margin-right: 10px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            width: 220px;
-            font-size: 16px;
-        }
-        #app-content button {
-            padding: 12px 20px;
-            background-color: #25D366;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-        }
+        #app-content input[type="tel"] { padding: 12px; margin-right: 10px; border: 1px solid #ccc; border-radius: 8px; width: 220px; font-size: 16px; }
+        #app-content button { padding: 12px 20px; background-color: #25D366; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; }
         #app-content button:hover { background-color: #128C7E; }
         .info-text { font-size: 14px; color: #667781; margin-top: 15px; }
 
         /* --- Botón de Instalación PWA --- */
-        #install-button {
-            position: fixed;
-            top: 15px;
-            right: 15px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 50px;
-            padding: 10px 15px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            z-index: 2000;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
+        #install-button { position: fixed; top: 15px; right: 15px; background-color: #007bff; color: white; border: none; border-radius: 50px; padding: 10px 15px; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 2000; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
-    <!-- Botón de instalación PWA (inicialmente oculto) -->
     <button id="install-button" class="hidden">Colocar App en Pantalla de Inicio</button>
 
-    <!-- Pantalla de login -->
     <div id="login-screen">
         <div id="login-form">
             <h2>🔒 Verificación de Licencia</h2>
-            <p>Ingresa la clave de licencia que recibiste por email.</p>
-            <input type="text" id="licenseKey" placeholder="Clave de Licencia" autocomplete="off">
+            <p>Ingresa o pega la clave que recibiste por email.</p>
+            <div class="input-wrapper">
+                <input type="text" id="licenseKey" placeholder="Clave de Licencia" autocomplete="off">
+                <button id="paste-btn" title="Pegar desde el portapapeles">Pegar</button>
+            </div>
             <button id="unlock-btn">Desbloquear</button>
             <p id="error-msg">Clave de licencia inválida.</p>
         </div>
     </div>
 
-    <!-- Contenido de la app -->
     <div id="app-content" class="hidden">
         <h1>WhatsApp Directo</h1>
         <input type="tel" id="phoneNumber" placeholder="Ej: 099123456">
@@ -162,69 +127,62 @@
 
     <script>
         // --- ELEMENTOS DEL DOM ---
+        const licenseKeyInput = document.getElementById('licenseKey');
+        const pasteBtn = document.getElementById('paste-btn');
+        const unlockBtn = document.getElementById('unlock-btn');
+        // ... (resto de elementos)
         const loginScreen = document.getElementById('login-screen');
         const appContent = document.getElementById('app-content');
-        const licenseKeyInput = document.getElementById('licenseKey');
-        const unlockBtn = document.getElementById('unlock-btn');
         const errorMsg = document.getElementById('error-msg');
         const phoneInput = document.getElementById('phoneNumber');
         const sendBtn = document.getElementById('sendButton');
         const installBtn = document.getElementById('install-button');
 
-        // --- LÓGICA DE INSTALACIÓN PWA ---
-        let deferredPrompt;
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevenir que el navegador muestre el prompt automáticamente
-            e.preventDefault();
-            // Guardar el evento para que pueda ser disparado más tarde
-            deferredPrompt = e;
-            // Mostrar nuestro botón de instalación personalizado
-            installBtn.classList.remove('hidden');
+        // --- LÓGICA DE PEGADO ---
+        pasteBtn.addEventListener('click', () => {
+            navigator.clipboard.readText().then(text => {
+                if (text) {
+                    licenseKeyInput.value = text.trim();
+                }
+            }).catch(err => {
+                console.error('Error al pegar desde el portapapeles:', err);
+                alert('No se pudo pegar. Asegúrate de haber dado permiso al navegador para acceder al portapapeles.');
+            });
         });
 
+        // --- LÓGICA DE INSTALACIÓN PWA ---
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.classList.remove('hidden');
+        });
         installBtn.addEventListener('click', async () => {
             if (deferredPrompt) {
-                // Mostrar el prompt de instalación nativo
                 deferredPrompt.prompt();
-                // Esperar a que el usuario responda al prompt
                 const { outcome } = await deferredPrompt.userChoice;
-                console.log(`User response to the install prompt: ${outcome}`);
-                // Ya no necesitaremos el evento guardado
                 deferredPrompt = null;
-                // Ocultar el botón de instalación
                 installBtn.classList.add('hidden');
             }
         });
-
         window.addEventListener('appinstalled', () => {
-            // Ocultar el botón si la app ya fue instalada
             installBtn.classList.add('hidden');
             deferredPrompt = null;
-            console.log('PWA was installed');
         });
 
         // --- LÓGICA DE LA APP PRINCIPAL ---
         function procesarNumeroUruguayo(numero) {
             let phone = numero.replace(/[^0-9]/g, '');
-            if (phone.startsWith('0')) {
-                phone = phone.substring(1);
-            }
+            if (phone.startsWith('0')) { phone = phone.substring(1); }
             if (phone.length !== 8) {
-                alert(`Número uruguayo inválido. Debe tener 8 dígitos.\nEjemplo: 099123456 → 99123456`);
+                alert(`Número uruguayo inválido. Debe tener 8 dígitos.`);
                 return null;
             }
             return "598" + phone;
         }
-
         if(sendBtn && phoneInput) {
             sendBtn.addEventListener('click', () => {
-                const numeroUruguayo = phoneInput.value.trim();
-                if (!numeroUruguayo) {
-                    alert("Por favor, ingresa un número de teléfono uruguayo (ej: 099123456).");
-                    return;
-                }
-                const numeroFinal = procesarNumeroUruguayo(numeroUruguayo);
+                const numeroFinal = procesarNumeroUruguayo(phoneInput.value.trim());
                 if (numeroFinal) {
                     window.open(`https://wa.me/${numeroFinal}`, '_blank');
                 }
@@ -237,12 +195,10 @@
             loginScreen.classList.add('hidden');
             appContent.classList.remove('hidden');
         }
-
         async function verifyLicense(key) {
             errorMsg.style.display = 'none';
             unlockBtn.disabled = true;
             unlockBtn.textContent = 'Verificando...';
-
             try {
                 const response = await fetch('/api/verificar-clave', {
                     method: 'POST',
@@ -258,7 +214,6 @@
                     localStorage.removeItem('gumroadLicenseKey');
                 }
             } catch (error) {
-                console.error('Error de conexión:', error);
                 errorMsg.textContent = 'No se pudo verificar la clave. Revisa tu conexión.';
                 errorMsg.style.display = 'block';
             } finally {
@@ -266,7 +221,6 @@
                 unlockBtn.textContent = 'Desbloquear';
             }
         }
-
         function checkSavedLicense() {
             const savedKey = localStorage.getItem('gumroadLicenseKey');
             if (savedKey) {
@@ -287,19 +241,13 @@
                 errorMsg.style.display = 'block';
             }
         });
-
         licenseKeyInput.addEventListener('keypress', (e) => {
-            if (errorMsg.style.display === 'block') {
-                errorMsg.style.display = 'none';
-            }
-            if (e.key === 'Enter') {
-                unlockBtn.click();
-            }
+            if (errorMsg.style.display === 'block') { errorMsg.style.display = 'none'; }
+            if (e.key === 'Enter') { unlockBtn.click(); }
         });
 
         // --- INICIALIZACIÓN ---
         checkSavedLicense();
-
     </script>
 </body>
 </html>
