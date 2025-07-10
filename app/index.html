@@ -3,28 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-           <!-- ICONO  -->
-           <title>WhatsApp Directo </title>
-    
-           <!-- Íconos para pantalla de inicio -->
-           <link rel="apple-touch-icon" sizes="180x180" href="https://ik.imagekit.io/tnzquipyu/image.ico?updatedAt=1743559795914">
-           <link rel="icon" type="image/png" sizes="192x192" href="https://ik.imagekit.io/tnzquipyu/image.ico?updatedAt=1743559795914">
-           <meta name="theme-color" content="#25D366">
-           <!-- TERMINA ICONO  -->
+    <title>WhatsApp Directo</title>
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Íconos y Theme Color para PWA -->
+    <link rel="apple-touch-icon" sizes="180x180" href="https://ik.imagekit.io/tnzquipyu/image.ico?updatedAt=1743559795914">
+    <link rel="icon" type="image/png" sizes="192x192" href="https://ik.imagekit.io/tnzquipyu/image.ico?updatedAt=1743559795914">
+    <meta name="theme-color" content="#25D366">
 
     <style>
         body {
-            font-family: sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
+            background-color: #f0f2f5; /* Un fondo más suave */
         }
+        .hidden {
+            display: none !important;
+        }
+
+        /* --- Pantalla de Login --- */
         #login-screen {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: #25D366;
+            background: #00a884; /* Tono de verde de WhatsApp */
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -32,91 +36,109 @@
             z-index: 1000;
             color: white;
             text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
         }
         #login-form {
             background: white;
             padding: 30px;
-            border-radius: 10px;
+            border-radius: 12px;
             color: #333;
-            width: 90%;
-            max-width: 320px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 340px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
         }
         #login-form h2 {
             margin-top: 0;
-            color: #128C7E;
+            color: #111b21; /* Color de texto oscuro de WhatsApp */
         }
         #login-form p {
-            margin-bottom: 15px;
-            color: #555;
+            margin-bottom: 20px;
+            color: #667781;
         }
         #licenseKey {
             box-sizing: border-box;
             width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
+            padding: 14px;
+            margin-bottom: 20px;
             border: 1px solid #ccc;
-            border-radius: 5px;
+            border-radius: 8px;
             font-size: 16px;
         }
         #unlock-btn {
-            background: #128C7E;
+            background: #00a884;
             color: white;
             border: none;
-            padding: 12px 15px;
-            border-radius: 5px;
+            padding: 14px 15px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
+            font-weight: bold;
             width: 100%;
             transition: background 0.3s ease;
         }
-        #unlock-btn:hover {
-            background: #075E54;
-        }
-        #unlock-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        .hidden {
-            display: none !important;
-        }
-        #error-msg {
-            color: red;
-            margin-top: 15px;
-            display: none;
-            font-weight: bold;
-        }
+        #unlock-btn:hover { background: #008a6e; }
+        #unlock-btn:disabled { background: #ccc; cursor: not-allowed; }
+        #error-msg { color: #d93025; margin-top: 15px; display: none; font-weight: bold; }
+
+        /* --- Contenido de la App --- */
         #app-content {
             padding: 20px;
             text-align: center;
+            max-width: 480px;
+            margin: 40px auto;
         }
+        #app-content h1 { color: #111b21; }
         #app-content input[type="tel"] {
-            padding: 10px;
+            padding: 12px;
             margin-right: 10px;
             border: 1px solid #ccc;
-            border-radius: 5px;
-            width: 200px;
+            border-radius: 8px;
+            width: 220px;
+            font-size: 16px;
         }
         #app-content button {
-            padding: 10px 15px;
+            padding: 12px 20px;
             background-color: #25D366;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
         }
-        #app-content button:hover {
-            background-color: #128C7E;
+        #app-content button:hover { background-color: #128C7E; }
+        .info-text { font-size: 14px; color: #667781; margin-top: 15px; }
+
+        /* --- Botón de Instalación PWA --- */
+        #install-button {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 10px 15px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 2000;
+            animation: pulse 2s infinite;
         }
-        .info-text {
-            font-size: 12px;
-            color: #666;
-            margin-top: 10px;
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
     </style>
 </head>
 <body>
-    <!-- ESTE COMENTARIO CERTIFICA QUE ESTOY MODIFICANDO EL ARCHIVO CORRECTO -->
+    <!-- Botón de instalación PWA (inicialmente oculto) -->
+    <button id="install-button" class="hidden">Colocar App en Pantalla de Inicio</button>
+
     <!-- Pantalla de login -->
     <div id="login-screen">
         <div id="login-form">
@@ -130,7 +152,7 @@
 
     <!-- Contenido de la app -->
     <div id="app-content" class="hidden">
-        <h1>WhatsApp Directo </h1>
+        <h1>WhatsApp Directo</h1>
         <input type="tel" id="phoneNumber" placeholder="Ej: 099123456">
         <button id="sendButton">Abrir Chat</button>
         <p class="info-text">Ingresa número (ej: 099123456 o 9123456)</p>
@@ -138,11 +160,6 @@
     </div>
 
     <script>
-        // --- CONFIGURACIÓN ---
-        const CODIGO_PAIS = "598"; // Código de Uruguay
-        const DIGITOS_URUGUAY = 8; 
-        const REVERIFY_DAYS_BEFORE_EXPIRATION = 7; // Días antes de la expiración para forzar re-verificación con el backend
-
         // --- ELEMENTOS DEL DOM ---
         const loginScreen = document.getElementById('login-screen');
         const appContent = document.getElementById('app-content');
@@ -151,6 +168,40 @@
         const errorMsg = document.getElementById('error-msg');
         const phoneInput = document.getElementById('phoneNumber');
         const sendBtn = document.getElementById('sendButton');
+        const installBtn = document.getElementById('install-button');
+
+        // --- LÓGICA DE INSTALACIÓN PWA ---
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevenir que el navegador muestre el prompt automáticamente
+            e.preventDefault();
+            // Guardar el evento para que pueda ser disparado más tarde
+            deferredPrompt = e;
+            // Mostrar nuestro botón de instalación personalizado
+            installBtn.classList.remove('hidden');
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                // Mostrar el prompt de instalación nativo
+                deferredPrompt.prompt();
+                // Esperar a que el usuario responda al prompt
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
+                // Ya no necesitaremos el evento guardado
+                deferredPrompt = null;
+                // Ocultar el botón de instalación
+                installBtn.classList.add('hidden');
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            // Ocultar el botón si la app ya fue instalada
+            installBtn.classList.add('hidden');
+            deferredPrompt = null;
+            console.log('PWA was installed');
+        });
 
         // --- LÓGICA DE LA APP PRINCIPAL ---
         function procesarNumeroUruguayo(numero) {
@@ -158,11 +209,11 @@
             if (phone.startsWith('0')) {
                 phone = phone.substring(1);
             }
-            if (phone.length !== DIGITOS_URUGUAY) {
-                alert(`Número uruguayo inválido. Debe tener ${DIGITOS_URUGUAY} dígitos.\nEjemplo: 099123456 → 99123456`);
+            if (phone.length !== 8) {
+                alert(`Número uruguayo inválido. Debe tener 8 dígitos.\nEjemplo: 099123456 → 99123456`);
                 return null;
             }
-            return CODIGO_PAIS + phone;
+            return "598" + phone;
         }
 
         if(sendBtn && phoneInput) {
@@ -179,76 +230,47 @@
             });
         }
 
-        // --- SISTEMA DE AUTENTICACIÓN CON BACKEND (VERIFICACIÓN DE CLAVE) ---
-        
+        // --- SISTEMA DE AUTENTICACIÓN ---
         function unlockApp(licenseKey) {
-            try {
-                // Guardar la clave verificada para futuros usos
-                localStorage.setItem('gumroadLicenseKey', licenseKey);
-                localStorage.removeItem('gumroadSubscriptionEndsAt'); // Limpiar si no es suscripción
-                
-                // Ocultar pantalla de login y mostrar la app
-                loginScreen.classList.add('hidden');
-                appContent.classList.remove('hidden');
-            } catch (error) {
-                console.error("Error al guardar la clave o al mostrar la app:", error);
-                alert("Hubo un error al desbloquear la aplicación.");
-            }
+            localStorage.setItem('gumroadLicenseKey', licenseKey);
+            loginScreen.classList.add('hidden');
+            appContent.classList.remove('hidden');
         }
 
         async function verifyLicense(key) {
-  errorMsg.style.display = 'none';
-  unlockBtn.disabled = true;
-  unlockBtn.textContent = 'Verificando...';
+            errorMsg.style.display = 'none';
+            unlockBtn.disabled = true;
+            unlockBtn.textContent = 'Verificando...';
 
-  try {
-    const response = await fetch('/api/verificar-clave', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clave: key.trim() }),
-    });
-
-    const data = await response.json();
-
-    if (response.ok && data.success) {
-      // Éxito: clave válida
-      unlockApp(key);
-    } else {
-      // Falló: mostrar mensaje de error si viene del servidor, o uno genérico
-      errorMsg.textContent = data.error || 'Clave inválida o ya usada.';
-      errorMsg.style.display = 'block';
-      localStorage.removeItem('gumroadLicenseKey');
-      localStorage.removeItem('gumroadSubscriptionEndsAt');
-    }
-  } catch (error) {
-    console.error('Error de conexión:', error);
-    errorMsg.textContent = 'No se pudo verificar la clave. Revisa tu conexión a internet.';
-    errorMsg.style.display = 'block';
-  } finally {
-    unlockBtn.disabled = false;
-    unlockBtn.textContent = 'Desbloquear';
-  }
-}
-
-        
-        // Verifica si hay una clave guardada al cargar la página
-        function checkSavedLicense() {
             try {
-                const savedKey = localStorage.getItem('gumroadLicenseKey');
-                const now = new Date();
-
-                if (savedKey) {
-                    // Para el modelo de un solo uso, si hay una clave guardada, asumimos que ya fue usada y verificada.
-                    // Si el usuario borra el localStorage, tendrá que reingresar la clave.
-                    unlockApp(savedKey);
+                const response = await fetch('/api/verificar-clave', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clave: key.trim() }),
+                });
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    unlockApp(key);
                 } else {
-                    // No hay clave guardada, mostrar pantalla de login
-                    loginScreen.classList.remove('hidden');
-                    appContent.classList.add('hidden');
+                    errorMsg.textContent = data.error || 'Clave inválida o ya usada.';
+                    errorMsg.style.display = 'block';
+                    localStorage.removeItem('gumroadLicenseKey');
                 }
-            } catch(error) {
-                console.error("Error al acceder al almacenamiento local o verificar clave guardada:", error);
-                // En caso de error, mostrar pantalla de login para que el usuario intente de nuevo
+            } catch (error) {
+                console.error('Error de conexión:', error);
+                errorMsg.textContent = 'No se pudo verificar la clave. Revisa tu conexión.';
+                errorMsg.style.display = 'block';
+            } finally {
+                unlockBtn.disabled = false;
+                unlockBtn.textContent = 'Desbloquear';
+            }
+        }
+
+        function checkSavedLicense() {
+            const savedKey = localStorage.getItem('gumroadLicenseKey');
+            if (savedKey) {
+                unlockApp(savedKey);
+            } else {
                 loginScreen.classList.remove('hidden');
                 appContent.classList.add('hidden');
             }
@@ -270,7 +292,7 @@
                 errorMsg.style.display = 'none';
             }
             if (e.key === 'Enter') {
-                unlockBtn.click(); // Simula el clic en el botón
+                unlockBtn.click();
             }
         });
 
