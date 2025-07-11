@@ -1,5 +1,11 @@
 import admin from 'firebase-admin';
 
+// --- CONFIGURACIÓN DE SEGURIDAD: LÍMITE DE INTENTOS (Rate Limiting) ---
+// Mapa en memoria para rastrear los intentos por IP. Se reinicia con la función.
+const rateLimitMap = new Map();
+// Límite: Permitir 1 intento cada 5 segundos por IP.
+const RATE_LIMIT_WINDOW_MS = 5000; 
+
 // Inicialización de Firebase Admin
 if (!admin.apps.length) {
   try {
@@ -17,6 +23,18 @@ export default async function handler(req, res) {
     return res.status(405).json({ success: false, error: 'Método no permitido' });
   }
 
+  // --- APLICACIÓN DEL LÍMITE DE INTENTOS ---
+  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
+  const now = Date.now();
+  const lastAttempt = rateLimitMap.get(ip);
+
+  if (lastAttempt && (now - lastAttempt) < RATE_LIMIT_WINDOW_MS) {
+    console.warn(`Rate limit excedido para la IP: ${ip}`);
+    return res.status(429).json({ success: false, error: 'Demasiados intentos. Por favor, espera unos segundos.' });
+  }
+  rateLimitMap.set(ip, now);
+
+  // --- LÓGICA DE VERIFICACIÓN DE CLAVE ---
   const { clave } = req.body;
 
   if (!clave || typeof clave !== 'string' || clave.trim() === '') {
@@ -29,19 +47,17 @@ export default async function handler(req, res) {
     const claveRef = db.collection('claves').doc(claveLimpia);
     const doc = await claveRef.get();
 
-    // La única fuente de verdad es la base de datos de Firebase.
-    // Si la clave existe y no ha sido usada, es válida.
-    if (doc.exists && doc.data().usada === false) {
-      // Marcar la clave como usada para que no pueda volver a utilizarse.
+    if (doc.exists && doc.data().usada !== true) {
       await claveRef.update({ 
         usada: true,
         fechaUso: admin.firestore.FieldValue.serverTimestamp()
       });
       
       console.log(`Clave '${claveLimpia}' verificada y marcada como usada.`);
+      // Limpiar el registro de intentos para esta IP tras un éxito
+      rateLimitMap.delete(ip);
       return res.status(200).json({ success: true });
     } else {
-      // Si el documento no existe o si 'usada' es true.
       console.warn(`Intento de uso de clave inválida o ya usada: '${claveLimpia}'`);
       return res.status(404).json({ success: false, error: 'Clave inválida o ya utilizada.' });
     }
