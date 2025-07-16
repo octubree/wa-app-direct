@@ -219,46 +219,52 @@
             });
         });
 
-        // --- LÓGICA DE INSTALACIÓN PWA ---
+        // --- LÓGICA DE INSTALACIÓN PWA (A PRUEBA DE FALLOS) ---
         let deferredPrompt = null;
 
-        function updateInstallButton() {
+        function initializeInstallButton() {
+            // 1. Comprobar si la app ya está instalada (máxima prioridad)
             if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-                // La app ya está instalada y se ejecuta en modo standalone
-                installCtaText.innerHTML = "✅ App Instalada<br>Puedes crear un acceso directo desde el menú de tu navegador.";
-                installCtaButton.textContent = "Mostrar Cómo";
-                installCtaButton.onclick = () => {
-                    alert("Para crear un acceso directo:\n\n1. Ve a tu lista de aplicaciones.\n2. Mantén presionado el ícono de 'WA Directo'.\n3. Arrástralo a tu pantalla de inicio.");
-                };
-            } else if (deferredPrompt) {
-                // La app no está instalada, pero se puede instalar
-                installCtaText.innerHTML = "¡ATENCIÓN!<br>No pierdas acceso, agrégala a tu pantalla de inicio.";
-                installCtaButton.textContent = "Agregar";
-                installCtaButton.onclick = async () => {
-                    deferredPrompt.prompt();
-                    const { outcome } = await deferredPrompt.userChoice;
-                    if (outcome === 'accepted') {
-                        deferredPrompt = null;
-                        updateInstallButton(); // Actualiza la UI después de instalar
-                    }
-                };
-            } else {
-                // No se puede instalar (ya se instaló, se rechazó, o no es compatible)
-                installCtaText.innerHTML = "App disponible para instalar";
-                installCtaButton.textContent = "Verificar Compatibilidad";
+                installCtaText.innerHTML = "✅ App Instalada";
+                installCtaButton.textContent = "Instalada";
                 installCtaButton.disabled = true;
+                installCta.style.background = '#28a745';
+                installCta.style.color = 'white';
+                return;
             }
+
+            // 2. Asignar el comportamiento por defecto (instrucciones manuales)
+            // Esto se ejecuta para todos los navegadores, incluyendo Firefox y Chrome en Xiaomi
+            installCtaButton.onclick = () => {
+                alert(
+                    'Para instalar la aplicación:\n\n' +
+                    '1. Toca el botón de menú de tu navegador (⋮).\n' +
+                    '2. Busca y selecciona la opción \'Instalar\', \'Agregar a la pantalla de inicio\' o similar.'
+                );
+            };
         }
 
+        // 3. Escuchar para "mejorar" el botón si el navegador es compatible
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            updateInstallButton();
+            // Si el evento se dispara, se reemplaza el onclick por defecto
+            installCtaButton.onclick = () => {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(choiceResult => {
+                    if (choiceResult.outcome === 'accepted') {
+                        // Si el usuario acepta, actualizamos la UI para reflejar el estado "instalada"
+                        initializeInstallButton();
+                    }
+                    deferredPrompt = null;
+                });
+            };
         });
 
         window.addEventListener('appinstalled', () => {
             deferredPrompt = null;
-            updateInstallButton();
+            // Actualiza la UI para mostrar el estado "instalada"
+            initializeInstallButton();
         });
 
         // --- LÓGICA DE LA APP PRINCIPAL ---
@@ -290,7 +296,7 @@
             localStorage.setItem('gumroadLicenseKey', licenseKey);
             loginScreen.classList.add('hidden');
             appContent.classList.remove('hidden');
-            updateInstallButton(); // Llama a la función para actualizar el botón al desbloquear
+            initializeInstallButton(); // Llama a la función para configurar el botón al desbloquear
         }
 
         async function verifyLicense(key) {
