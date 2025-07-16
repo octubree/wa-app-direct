@@ -128,6 +128,7 @@
                 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/1200px-WhatsApp.svg.png" alt="Compartir en WhatsApp" class="whatsapp-icon">
                 Compartir por WhatsApp
             </a>
+            <button id="copyLinkButton" class="button secondary" style="margin-left: 10px;">Copiar Link</button>
         </div>
     </section>
 
@@ -136,5 +137,17 @@
             <p>&copy; 2025 WhatsApp Directo. Todos los derechos reservados.</p>
         </div>
     </footer>
+
+    <script>
+        document.getElementById('copyLinkButton').addEventListener('click', function() {
+            const linkToCopy = window.location.href;
+            navigator.clipboard.writeText(linkToCopy).then(function() {
+                alert('¡Enlace copiado al portapapeles!');
+            }, function(err) {
+                console.error('Error al copiar el enlace: ', err);
+                alert('No se pudo copiar el enlace. Por favor, inténtalo manualmente.');
+            });
+        });
+    </script>
 </body>
 </html>
