@@ -1,14 +1,25 @@
 {
-    "name": "WhatsApp Directo ",
-    "short_name": "WA ",
-    "icons": [
-      {
-        "src": "https://example.com/icono-192x192.png",
-        "sizes": "192x192",
-        "type": "image/png"
-      }
-    ],
-    "theme_color": "#25D366",
-    "background_color": "#25D366",
-    "display": "standalone"
-  }
+  "name": "WhatsApp Directo",
+  "short_name": "WA Directo",
+  "description": "Envía mensajes de WhatsApp sin agregar el contacto.",
+  "start_url": "/app/index.html",
+  "scope": "/app/",
+  "id": "/app/index.html",
+  "display": "standalone",
+  "background_color": "#f0f2f5",
+  "theme_color": "#00a884",
+  "icons": [
+    {
+      "src": "https://ik.imagekit.io/tnzquipyu/image.ico?updatedAt=1743559795914",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://ik.imagekit.io/tnzquipyu/image.ico?updatedAt=1743559795914",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
