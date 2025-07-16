@@ -127,6 +127,38 @@
         /* --- Botón de Instalación PWA --- */
         #install-button { position: fixed; top: 15px; right: 15px; background-color: #007bff; color: white; border: none; border-radius: 50px; padding: 10px 15px; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 2000; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        /* --- Caja de Llamada a la Acción para Instalar --- */
+        #install-cta {
+            background: linear-gradient(45deg, #ffc107, #ff9800);
+            color: #333;
+            padding: 20px;
+            margin-top: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        #install-cta p {
+            margin: 0 0 15px 0;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        #install-cta-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: auto;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        #install-cta-button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
@@ -154,6 +186,12 @@
         </div>
         <p class="info-text">Ingresa un número de Uruguay (ej: 099123456).</p>
         <p style="margin-top:20px; font-size: small; color: grey;">Licencia Verificada</p>
+
+        <!-- Caja de Llamada a la Acción para Instalar -->
+        <div id="install-cta" class="hidden">
+            <p>¡ATENCIÓN!<br>No pierdas acceso, agrégala a tu pantalla de inicio.</p>
+            <button id="install-cta-button">Agregar</button>
+        </div>
     </div>
 
     <script>
@@ -169,6 +207,8 @@
         const messageInput = document.getElementById('message'); // Nuevo elemento
         const sendBtn = document.getElementById('sendButton');
         const installBtn = document.getElementById('install-button');
+        const installCta = document.getElementById('install-cta');
+        const installCtaButton = document.getElementById('install-cta-button');
 
         // --- LÓGICA DE PEGADO ---
         pasteBtn.addEventListener('click', () => {
@@ -187,18 +227,27 @@
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
+            // Muestra ambos botones/secciones si la instalación es posible
             installBtn.classList.remove('hidden');
+            installCta.classList.remove('hidden');
         });
-        installBtn.addEventListener('click', async () => {
+
+        async function handleInstallPrompt() {
             if (deferredPrompt) {
                 deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
                 deferredPrompt = null;
                 installBtn.classList.add('hidden');
+                installCta.classList.add('hidden');
             }
-        });
+        }
+
+        installBtn.addEventListener('click', handleInstallPrompt);
+        installCtaButton.addEventListener('click', handleInstallPrompt);
+
         window.addEventListener('appinstalled', () => {
             installBtn.classList.add('hidden');
+            installCta.classList.add('hidden');
             deferredPrompt = null;
         });
 
