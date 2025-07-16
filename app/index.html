@@ -124,6 +124,32 @@
         #app-content button:hover { background-color: #128C7E; }
         .info-text { font-size: 14px; color: #667781; margin-top: 15px; }
 
+        /* --- Sección de Instagram --- */
+        .instagram-follow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            gap: 10px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .instagram-follow a {
+            text-decoration: none;
+            color: #111b21; /* Color de texto oscuro para contraste */
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .instagram-follow a:hover {
+            color: #00a884; /* Color de hover */
+        }
+        .instagram-follow img {
+            width: 30px;
+            height: 30px;
+            vertical-align: middle;
+        }
+
         /* --- Botón de Instalación PWA --- */
         #install-button { position: fixed; top: 15px; right: 15px; background-color: #007bff; color: white; border: none; border-radius: 50px; padding: 10px 15px; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 2000; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
@@ -178,6 +204,12 @@
     </div>
 
     <div id="app-content" class="hidden">
+        <div class="instagram-follow">
+            <a href="https://www.instagram.com/whatsapdirecto/" target="_blank">
+                <img src="https://res.cloudinary.com/octubree/image/upload/v1752678535/inst.png" alt="Instagram Logo">
+                Síguenos en Instagram
+            </a>
+        </div>
         <h1>WhatsApp Directo</h1>
         <div id="form-container">
             <input type="tel" id="phoneNumber" placeholder="Ej: 099123456">
