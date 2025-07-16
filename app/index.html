@@ -187,9 +187,9 @@
         <p class="info-text">Ingresa un número de Uruguay (ej: 099123456).</p>
         <p style="margin-top:20px; font-size: small; color: grey;">Licencia Verificada</p>
 
-        <!-- Caja de Llamada a la Acción para Instalar -->
-        <div id="install-cta" class="hidden">
-            <p>¡ATENCIÓN!<br>No pierdas acceso, agrégala a tu pantalla de inicio.</p>
+        <!-- Caja de Llamada a la Acción para Instalar (siempre visible después del login) -->
+        <div id="install-cta">
+            <p id="install-cta-text">¡ATENCIÓN!<br>No pierdas acceso, agrégala a tu pantalla de inicio.</p>
             <button id="install-cta-button">Agregar</button>
         </div>
     </div>
@@ -199,56 +199,66 @@
         const licenseKeyInput = document.getElementById('licenseKey');
         const pasteBtn = document.getElementById('paste-btn');
         const unlockBtn = document.getElementById('unlock-btn');
-        // ... (resto de elementos)
         const loginScreen = document.getElementById('login-screen');
         const appContent = document.getElementById('app-content');
         const errorMsg = document.getElementById('error-msg');
         const phoneInput = document.getElementById('phoneNumber');
-        const messageInput = document.getElementById('message'); // Nuevo elemento
+        const messageInput = document.getElementById('message');
         const sendBtn = document.getElementById('sendButton');
-        const installBtn = document.getElementById('install-button');
         const installCta = document.getElementById('install-cta');
+        const installCtaText = document.getElementById('install-cta-text');
         const installCtaButton = document.getElementById('install-cta-button');
 
         // --- LÓGICA DE PEGADO ---
         pasteBtn.addEventListener('click', () => {
             navigator.clipboard.readText().then(text => {
-                if (text) {
-                    licenseKeyInput.value = text.trim();
-                }
+                if (text) { licenseKeyInput.value = text.trim(); }
             }).catch(err => {
-                console.error('Error al pegar desde el portapapeles:', err);
-                alert('No se pudo pegar. Asegúrate de haber dado permiso al navegador para acceder al portapapeles.');
+                console.error('Error al pegar:', err);
+                alert('No se pudo pegar. Revisa los permisos del navegador.');
             });
         });
 
         // --- LÓGICA DE INSTALACIÓN PWA ---
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            // Muestra ambos botones/secciones si la instalación es posible
-            installBtn.classList.remove('hidden');
-            installCta.classList.remove('hidden');
-        });
+        let deferredPrompt = null;
 
-        async function handleInstallPrompt() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                deferredPrompt = null;
-                installBtn.classList.add('hidden');
-                installCta.classList.add('hidden');
+        function updateInstallButton() {
+            if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+                // La app ya está instalada y se ejecuta en modo standalone
+                installCtaText.innerHTML = "✅ App Instalada<br>Puedes crear un acceso directo desde el menú de tu navegador.";
+                installCtaButton.textContent = "Mostrar Cómo";
+                installCtaButton.onclick = () => {
+                    alert("Para crear un acceso directo:\n\n1. Ve a tu lista de aplicaciones.\n2. Mantén presionado el ícono de 'WA Directo'.\n3. Arrástralo a tu pantalla de inicio.");
+                };
+            } else if (deferredPrompt) {
+                // La app no está instalada, pero se puede instalar
+                installCtaText.innerHTML = "¡ATENCIÓN!<br>No pierdas acceso, agrégala a tu pantalla de inicio.";
+                installCtaButton.textContent = "Agregar";
+                installCtaButton.onclick = async () => {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        deferredPrompt = null;
+                        updateInstallButton(); // Actualiza la UI después de instalar
+                    }
+                };
+            } else {
+                // No se puede instalar (ya se instaló, se rechazó, o no es compatible)
+                installCtaText.innerHTML = "App disponible para instalar";
+                installCtaButton.textContent = "Verificar Compatibilidad";
+                installCtaButton.disabled = true;
             }
         }
 
-        installBtn.addEventListener('click', handleInstallPrompt);
-        installCtaButton.addEventListener('click', handleInstallPrompt);
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            updateInstallButton();
+        });
 
         window.addEventListener('appinstalled', () => {
-            installBtn.classList.add('hidden');
-            installCta.classList.add('hidden');
             deferredPrompt = null;
+            updateInstallButton();
         });
 
         // --- LÓGICA DE LA APP PRINCIPAL ---
@@ -261,6 +271,7 @@
             }
             return "598" + phone;
         }
+
         if(sendBtn && phoneInput) {
             sendBtn.addEventListener('click', () => {
                 const numeroFinal = procesarNumeroUruguayo(phoneInput.value.trim());
@@ -268,9 +279,7 @@
                     const message = messageInput.value.trim();
                     const encodedMessage = encodeURIComponent(message);
                     let url = `https://wa.me/${numeroFinal}`;
-                    if (encodedMessage) {
-                        url += `?text=${encodedMessage}`;
-                    }
+                    if (encodedMessage) { url += `?text=${encodedMessage}`; }
                     window.open(url, '_blank');
                 }
             });
@@ -281,7 +290,9 @@
             localStorage.setItem('gumroadLicenseKey', licenseKey);
             loginScreen.classList.add('hidden');
             appContent.classList.remove('hidden');
+            updateInstallButton(); // Llama a la función para actualizar el botón al desbloquear
         }
+
         async function verifyLicense(key) {
             errorMsg.style.display = 'none';
             unlockBtn.disabled = true;
@@ -308,6 +319,7 @@
                 unlockBtn.textContent = 'Desbloquear';
             }
         }
+
         function checkSavedLicense() {
             const savedKey = localStorage.getItem('gumroadLicenseKey');
             if (savedKey) {
@@ -328,6 +340,7 @@
                 errorMsg.style.display = 'block';
             }
         });
+
         licenseKeyInput.addEventListener('keypress', (e) => {
             if (errorMsg.style.display === 'block') { errorMsg.style.display = 'none'; }
             if (e.key === 'Enter') { unlockBtn.click(); }
