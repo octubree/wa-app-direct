@@ -233,13 +233,18 @@
                 return;
             }
 
-            // 2. Asignar el comportamiento por defecto (instrucciones manuales)
-            // Esto se ejecuta para todos los navegadores, incluyendo Firefox y Chrome en Xiaomi
+            // 2. Comprobar si es Firefox y ocultar el botón
+            if (navigator.userAgent.includes("Firefox")) {
+                installCtaButton.style.display = 'none';
+                return; // No hacer nada más para Firefox
+            }
+
+            // 3. Comportamiento por defecto para otros navegadores (Chrome, Edge, etc.)
             installCtaButton.onclick = () => {
                 alert(
                     'Para instalar la aplicación:\n\n' +
                     '1. Toca el botón de menú de tu navegador (⋮).\n' +
-                    '2. Busca y selecciona la opción \'Instalar\', \'Agregar a la pantalla de inicio\' o similar.'
+                    '2. Busca y selecciona la opción \'Instalar\' o \'Agregar a la pantalla de inicio\'.'
                 );
             };
         }
