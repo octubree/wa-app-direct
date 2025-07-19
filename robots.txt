@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://whats-app-directo.online/sitemap.xml
