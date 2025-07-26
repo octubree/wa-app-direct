@@ -1,16 +1,12 @@
 {
-  "name": "whatsapp-direct-pruebas-backend",
+  "name": "whatsapp-direct",
   "version": "1.0.0",
-  "description": "Backend para verificación de claves de WhatsApp Directo",
-  "main": "api/verificar-clave.js",
+  "private": true,
   "scripts": {
-    "start": "node api/verificar-clave.js"
+    "dev": "wrangler pages dev ./public",
+    "deploy": "wrangler pages deploy ./public"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "firebase-admin": "^12.0.0",
-    "node-fetch": "^2.6.1" 
+  "devDependencies": {
+    "wrangler": "^3.71.0"
   }
 }
