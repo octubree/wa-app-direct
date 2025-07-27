@@ -1,8 +1,8 @@
 import { createJwt } from '../utils/firebase-jwt.js';
 
-export async function onRequestPost(context) {
+export async function onRequestPost({ request, env }) {
   try {
-    const body = await context.request.json();
+    const body = await request.json();
     const clave = body.clave?.trim().toUpperCase();
     if (!clave) {
       return new Response(JSON.stringify({ success: false, error: 'Clave inválida' }), {
@@ -11,7 +11,7 @@ export async function onRequestPost(context) {
     }
 
     // Generar token de acceso usando la cuenta de servicio
-    const serviceAccount = JSON.parse(context.env.FIREBASE_SERVICE_ACCOUNT);
+    const serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
     const token = await createJwt(serviceAccount);
 
     const projectId = serviceAccount.project_id;
