@@ -1,4 +1,4 @@
-import { createJwt } from './utils/firebase-jwt.js';
+import { createJwt } from '../utils/firebase-jwt.js';
 
 export async function onRequestPost(context) {
   try {
