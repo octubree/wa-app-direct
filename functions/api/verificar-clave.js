@@ -1,73 +1,77 @@
-import { createJwt } from '../utils/firebase-jwt.js';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+
+// Helper para inicializar Firebase solo una vez
+function initializeFirebase(serviceAccount) {
+  if (!getApps().length) {
+    initializeApp({
+      credential: cert(serviceAccount),
+    });
+  }
+}
 
 export async function onRequestPost({ request, env }) {
+  // 1. Inicializar Firebase
   try {
+    const serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
+    initializeFirebase(serviceAccount);
+  } catch (e) {
+    console.error('Error inicializando Firebase:', e);
+    return new Response(JSON.stringify({ success: false, error: 'Configuración del servidor inválida.' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  try {
+    // 2. Obtener la clave del cuerpo de la petición
     const body = await request.json();
     const clave = body.clave?.trim().toUpperCase();
+
     if (!clave) {
-      return new Response(JSON.stringify({ success: false, error: 'Clave inválida' }), {
-        status: 400, headers: { 'Content-Type': 'application/json' }
+      return new Response(JSON.stringify({ success: false, error: 'La clave no puede estar vacía.' }), {
+        status: 400, // Bad Request
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // Generar token de acceso usando la cuenta de servicio
-    const serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
-    const token = await createJwt(serviceAccount);
+    // 3. Verificar la clave en Firestore
+    const db = getFirestore();
+    const claveRef = db.collection('claves').doc(clave);
+    const doc = await claveRef.get();
 
-    const projectId = serviceAccount.project_id;
-    const docUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/claves/${clave}`;
+    if (!doc.exists) {
+      return new Response(JSON.stringify({ success: false, error: 'Clave inválida.' }), {
+        status: 404, // Not Found
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
-    // Leer el documento
-    const getDoc = await fetch(docUrl, {
-      headers: { Authorization: `Bearer ${token}` }
+    const data = doc.data();
+    if (data.usada === true) {
+      return new Response(JSON.stringify({ success: false, error: 'La clave ya ha sido utilizada.' }), {
+        status: 409, // Conflict
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // 4. Marcar la clave como usada
+    await claveRef.update({
+      usada: true,
+      fechaUso: new Date().toISOString(),
     });
 
-    if (getDoc.status === 404) {
-      return new Response(JSON.stringify({ success: false, error: 'Clave inválida o ya usada.' }), {
-        status: 404, headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const data = await getDoc.json();
-    const fields = data.fields || {};
-    const usada = fields.usada?.booleanValue === true;
-
-    if (usada) {
-      return new Response(JSON.stringify({ success: false, error: 'Clave inválida o ya usada.' }), {
-        status: 404, headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Marcar como usada
-    const updateBody = {
-      fields: {
-        usada: { booleanValue: true },
-        fechaUso: { timestampValue: new Date().toISOString() }
-      }
-    };
-
-    const updateUrl = `${docUrl}?updateMask.fieldPaths=usada&updateMask.fieldPaths=fechaUso`;
-
-    const updateResponse = await fetch(updateUrl, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(updateBody)
-    });
-
-    const updateText = await updateResponse.text();
-    console.log("UPDATE STATUS:", updateResponse.status);
-    console.log("UPDATE RESPONSE:", updateText);
-
+    // 5. Devolver éxito
     return new Response(JSON.stringify({ success: true }), {
-      status: 200, headers: { 'Content-Type': 'application/json' }
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
     });
 
-  } catch (err) {
-    return new Response(JSON.stringify({ success: false, error: 'Error en servidor.' }), {
-      status: 500, headers: { 'Content-Type': 'application/json' }
+  } catch (error) {
+    console.error('Error procesando la clave:', error);
+    return new Response(JSON.stringify({ success: false, error: 'Ocurrió un error en el servidor.' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 }
