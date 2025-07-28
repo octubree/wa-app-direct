@@ -19,6 +19,10 @@ export async function onRequestPost({ request, env }) {
     });
   }
 
+  // Asegurarse de que googleapis no intente cargar credenciales automáticamente
+  process.env.GCP_PROJECT = undefined;
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = undefined;
+
   try {
     // Autenticación JWT manual para Firestore REST
     const jwt = new google.auth.JWT(
