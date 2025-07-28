@@ -1,17 +1,12 @@
+
 {
-  "name": "whatsapp-direct",
+  "name": "cloudflare-firebase-project",
   "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "dev": "wrangler pages dev ./public",
-    "deploy": "wrangler pages deploy ./public",
-    "build": "npm install"
-  },
+  "main": "index.js",
+  "license": "MIT",
   "dependencies": {
-    "googleapis": "^128.0.0",
+    "googleapis": "^133.0.0",
+    "google-auth-library": "^9.0.0",
     "uuid": "^9.0.0"
-  },
-  "devDependencies": {
-    "wrangler": "^3.71.0"
   }
 }
