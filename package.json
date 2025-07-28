@@ -8,7 +8,7 @@
     "build": "npm install"
   },
   "dependencies": {
-    "firebase-admin": "^12.0.0"
+    "googleapis": "^128.0.0"
   },
   "devDependencies": {
     "wrangler": "^3.71.0"

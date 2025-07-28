@@ -1,62 +1,84 @@
-import * as admin from 'firebase-admin';
+import { google } from 'googleapis';
 
-let app;
-let db;
+export async function onRequestPost(context) {
+  const { request, env } = context;
+  const body = await request.json();
+  const clave = body.clave?.trim().toUpperCase(); // Asegurarse de limpiar y poner en mayúsculas
 
-export async function onRequestPost({ request, env }) {
+  console.log('ENV PROJECT_ID:', env.FIREBASE_PROJECT_ID ? 'OK' : 'MISSING');
+  console.log('ENV CLIENT_EMAIL:', env.FIREBASE_CLIENT_EMAIL ? 'OK' : 'MISSING');
+  console.log('ENV PRIVATE_KEY:', env.FIREBASE_PRIVATE_KEY ? 'OK' : 'MISSING');
+
+  if (!clave) {
+    return new Response(JSON.stringify({ success: false, error: 'La clave no puede estar vacía.' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
-    // Logs para verificar que Cloudflare pasa las variables
-    console.log("ENV PROJECT_ID:", env.FIREBASE_PROJECT_ID ? "OK" : "MISSING");
-    console.log("ENV CLIENT_EMAIL:", env.FIREBASE_CLIENT_EMAIL ? "OK" : "MISSING");
-    console.log("ENV PRIVATE_KEY:", env.FIREBASE_PRIVATE_KEY ? "OK" : "MISSING");
+    // Autenticación JWT manual para Firestore REST
+    const jwt = new google.auth.JWT(
+      env.FIREBASE_CLIENT_EMAIL,
+      null,
+      env.FIREBASE_PRIVATE_KEY.replace(/\n/g, '\n'),
+      ['https://www.googleapis.com/auth/datastore']
+    );
 
-    // Inicializar Firebase Admin si no está inicializado
-    if (!app) {
-      app = admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: env.FIREBASE_PROJECT_ID,
-          clientEmail: env.FIREBASE_CLIENT_EMAIL,
-          privateKey: env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-        }),
-      });
-      db = admin.firestore();
-      db.settings({ preferRest: true });
-    }
+    await jwt.authorize();
 
-    // Leer la clave enviada desde el frontend
-    const body = await request.json();
-    const clave = body.clave?.trim().toUpperCase();
-    if (!clave) {
-      return new Response(JSON.stringify({ success: false, error: 'Clave inválida' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+    const firestore = google.firestore({
+      version: 'v1',
+      auth: jwt,
+    });
 
-    // Buscar la clave en Firestore
-    const claveRef = db.collection('claves').doc(clave);
-    const doc = await claveRef.get();
+    // La colección es 'claves' según tu configuración inicial
+    const documentPath = `projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/claves/${clave}`;
 
-    if (doc.exists && doc.data().usada !== true) {
-      await claveRef.update({
-        usada: true,
-        fechaUso: admin.firestore.FieldValue.serverTimestamp(),
-      });
+    // Obtener el documento
+    const getRes = await firestore.projects.databases.documents.get({ // Changed from firestore.projects.databases.documents.get
+      name: documentPath,
+    });
 
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } else {
-      return new Response(JSON.stringify({ success: false, error: 'Clave inválida o ya usada' }), {
+    const docData = getRes.data.fields;
+    const isUsed = docData && docData.usada && docData.usada.booleanValue === true;
+
+    if (!docData) { // El documento no existe
+      return new Response(JSON.stringify({ success: false, error: 'Clave inválida.' }), {
         status: 404,
         headers: { 'Content-Type': 'application/json' },
       });
     }
-  } catch (err) {
-    console.log("ERROR:", err.message);
-    return new Response(JSON.stringify({ success: false, error: 'Auth or server error' }), {
-      status: 401,
+
+    if (isUsed) { // La clave ya ha sido utilizada
+      return new Response(JSON.stringify({ success: false, error: 'La clave ya ha sido utilizada.' }), {
+        status: 409, // Conflict
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // La clave existe y no ha sido utilizada, marcarla como utilizada
+    await firestore.projects.databases.documents.patch({
+      name: documentPath,
+      updateMask: { fieldPaths: ['usada', 'fechaUso'] },
+      currentDocument: { exists: true },
+      body: {
+        fields: {
+          usada: { booleanValue: true },
+          fechaUso: { timestampValue: new Date().toISOString() },
+        },
+      },
+    });
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('ERROR:', error.message); // Usar console.error para errores
+    return new Response(JSON.stringify({ success: false, error: 'Ocurrió un error en el servidor.' }), {
+      status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
   }
