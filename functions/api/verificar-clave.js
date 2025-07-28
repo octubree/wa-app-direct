@@ -20,6 +20,7 @@ export async function onRequestPost({ request, env }) {
         }),
       });
       db = admin.firestore();
+      db.settings({ preferRest: true });
     }
 
     // Leer la clave enviada desde el frontend
