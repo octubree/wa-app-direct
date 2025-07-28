@@ -1,76 +1,61 @@
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import * as admin from 'firebase-admin';
 
-// Helper para inicializar Firebase solo una vez
-function initializeFirebase(serviceAccount) {
-  if (!getApps().length) {
-    initializeApp({
-      credential: cert(serviceAccount),
-    });
-  }
-}
+let app;
+let db;
 
 export async function onRequestPost({ request, env }) {
-  // 1. Inicializar Firebase
   try {
-    const serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
-    initializeFirebase(serviceAccount);
-  } catch (e) {
-    console.error('Error inicializando Firebase:', e);
-    return new Response(JSON.stringify({ success: false, error: 'Configuración del servidor inválida.' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+    // Logs para verificar que Cloudflare pasa las variables
+    console.log("ENV PROJECT_ID:", env.FIREBASE_PROJECT_ID ? "OK" : "MISSING");
+    console.log("ENV CLIENT_EMAIL:", env.FIREBASE_CLIENT_EMAIL ? "OK" : "MISSING");
+    console.log("ENV PRIVATE_KEY:", env.FIREBASE_PRIVATE_KEY ? "OK" : "MISSING");
 
-  try {
-    // 2. Obtener la clave del cuerpo de la petición
+    // Inicializar Firebase Admin si no está inicializado
+    if (!app) {
+      app = admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId: env.FIREBASE_PROJECT_ID,
+          clientEmail: env.FIREBASE_CLIENT_EMAIL,
+          privateKey: env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        }),
+      });
+      db = admin.firestore();
+    }
+
+    // Leer la clave enviada desde el frontend
     const body = await request.json();
     const clave = body.clave?.trim().toUpperCase();
-
     if (!clave) {
-      return new Response(JSON.stringify({ success: false, error: 'La clave no puede estar vacía.' }), {
-        status: 400, // Bad Request
+      return new Response(JSON.stringify({ success: false, error: 'Clave inválida' }), {
+        status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // 3. Verificar la clave en Firestore
-    const db = getFirestore();
+    // Buscar la clave en Firestore
     const claveRef = db.collection('claves').doc(clave);
     const doc = await claveRef.get();
 
-    if (!doc.exists) {
-      return new Response(JSON.stringify({ success: false, error: 'Clave inválida.' }), {
-        status: 404, // Not Found
+    if (doc.exists && doc.data().usada !== true) {
+      await claveRef.update({
+        usada: true,
+        fechaUso: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } else {
+      return new Response(JSON.stringify({ success: false, error: 'Clave inválida o ya usada' }), {
+        status: 404,
         headers: { 'Content-Type': 'application/json' },
       });
     }
-
-    const data = doc.data();
-    if (data.usada === true) {
-      return new Response(JSON.stringify({ success: false, error: 'La clave ya ha sido utilizada.' }), {
-        status: 409, // Conflict
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
-    // 4. Marcar la clave como usada
-    await claveRef.update({
-      usada: true,
-      fechaUso: new Date().toISOString(),
-    });
-
-    // 5. Devolver éxito
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-  } catch (error) {
-    console.error('Error procesando la clave:', error);
-    return new Response(JSON.stringify({ success: false, error: 'Ocurrió un error en el servidor.' }), {
-      status: 500,
+  } catch (err) {
+    console.log("ERROR:", err.message);
+    return new Response(JSON.stringify({ success: false, error: 'Auth or server error' }), {
+      status: 401,
       headers: { 'Content-Type': 'application/json' },
     });
   }
