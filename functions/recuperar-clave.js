@@ -2,10 +2,6 @@ import { google } from 'googleapis';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function onRequestPost({ request, env }) {
-  console.log('ENV PROJECT_ID:', env.FIREBASE_PROJECT_ID ? 'OK' : 'MISSING');
-  console.log('ENV CLIENT_EMAIL:', env.FIREBASE_CLIENT_EMAIL ? 'OK' : 'MISSING');
-  console.log('ENV PRIVATE_KEY:', env.FIREBASE_PRIVATE_KEY ? 'OK' : 'MISSING');
-
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ success: false, message: 'Método no permitido' }), {
       status: 405,
@@ -43,8 +39,6 @@ export async function onRequestPost({ request, env }) {
     const databaseId = '(default)'; // Default Firestore database
 
     // 1. Buscar la clave antigua asociada al email
-    // Firestore REST API does not directly support 'where' clauses like the Admin SDK.
-    // We need to use a structured query.
     const queryUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents:runQuery`;
 
     const queryBody = {
@@ -75,16 +69,13 @@ export async function onRequestPost({ request, env }) {
     let oldKeyDoc = null;
     let oldKeyId = null;
 
-    // Parse the query result to find the old key
     if (queryResult && queryResult.length > 0) {
-      // The result is an array, and each item might be a document or a "readTime" object
       for (const item of queryResult) {
         if (item.document) {
           oldKeyDoc = item.document;
-          // Extract the document ID from the name field
           const nameParts = oldKeyDoc.name.split('/');
           oldKeyId = nameParts[nameParts.length - 1];
-          break; // Found the first document, we only limited to 1
+          break;
         }
       }
     }
