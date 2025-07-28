@@ -1,12 +1,12 @@
-
 {
-  "name": "cloudflare-firebase-project",
+  "name": "whatsapp-direct",
   "version": "1.0.0",
+  "description": "App de prueba WhatsApp Directo",
   "main": "index.js",
-  "license": "MIT",
-  "dependencies": {
-    "googleapis": "^133.0.0",
-    "google-auth-library": "^9.0.0",
-    "uuid": "^9.0.0"
-  }
+  "scripts": {
+    "build": "echo 'No build step required'"
+  },
+  "dependencies": {},
+  "author": "",
+  "license": "ISC"
 }
