@@ -28,22 +28,18 @@ export async function onRequestPost({ request, env }) {
     const jwt = new google.auth.JWT(
       env.FIREBASE_CLIENT_EMAIL,
       null,
-      env.FIREBASE_PRIVATE_KEY.replace(/\n/g, '\n'),
+      env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       ['https://www.googleapis.com/auth/datastore']
     );
 
     await jwt.authorize();
 
-    const firestore = google.firestore({
-      version: 'v1',
-      auth: jwt,
-    });
-
     const projectId = env.FIREBASE_PROJECT_ID;
     const databaseId = '(default)'; // Default Firestore database
+    const firestoreApiBaseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents`;
 
     // 1. Buscar la clave antigua asociada al email
-    const queryUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents:runQuery`;
+    const queryUrl = `${firestoreApiBaseUrl}:runQuery`;
 
     const queryBody = {
       structuredQuery: {
@@ -93,35 +89,41 @@ export async function onRequestPost({ request, env }) {
 
     // 2. Generar una nueva clave única
     const nuevaClave = uuidv4().split('-')[0].toUpperCase();
-    const newKeyDocumentPath = `projects/${projectId}/databases/${databaseId}/documents/claves/${nuevaClave}`;
 
     // 3. Marcar la clave antigua como "revocada"
-    const oldKeyDocumentPath = `projects/${projectId}/databases/${databaseId}/documents/claves/${oldKeyId}`;
-    await firestore.projects.databases.documents.patch({
-      name: oldKeyDocumentPath,
-      updateMask: { fieldPaths: ['revocada', 'reemplazadaPor'] },
-      currentDocument: { exists: true },
-      body: {
+    const oldKeyDocumentPath = `${firestoreApiBaseUrl}/claves/${oldKeyId}`;
+    const patchOldKeyUrl = `${oldKeyDocumentPath}?updateMask.fieldPaths=revocada&updateMask.fieldPaths=reemplazadaPor`;
+
+    await fetch(patchOldKeyUrl, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${jwt.credentials.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         fields: {
           revocada: { booleanValue: true },
           reemplazadaPor: { stringValue: nuevaClave },
         },
-      },
+      }),
     });
 
     // 4. Guardar la nueva clave en Firebase
-    await firestore.projects.databases.documents.create({
-      parent: `projects/${projectId}/databases/${databaseId}/documents`,
-      collectionId: 'claves',
-      documentId: nuevaClave,
-      body: {
+    const createNewUrl = `${firestoreApiBaseUrl}/claves?documentId=${nuevaClave}`;
+    await fetch(createNewUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${jwt.credentials.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         fields: {
           usada: { booleanValue: false },
           email: { stringValue: email },
           recuperada: { booleanValue: true },
           generadaEn: { timestampValue: new Date().toISOString() },
         },
-      },
+      }),
     });
 
     return new Response(JSON.stringify({ success: true, nuevaClave }), {

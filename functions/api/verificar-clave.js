@@ -5,10 +5,6 @@ export async function onRequestPost(context) {
   const body = await request.json();
   const clave = body.clave?.trim().toUpperCase(); // Asegurarse de limpiar y poner en mayúsculas
 
-  console.log('ENV PROJECT_ID:', env.FIREBASE_PROJECT_ID ? 'OK' : 'MISSING');
-  console.log('ENV CLIENT_EMAIL:', env.FIREBASE_CLIENT_EMAIL ? 'OK' : 'MISSING');
-  console.log('ENV PRIVATE_KEY:', env.FIREBASE_PRIVATE_KEY ? 'OK' : 'MISSING');
-
   if (!clave) {
     return new Response(JSON.stringify({ success: false, error: 'La clave no puede estar vacía.' }), {
       status: 400,
@@ -31,23 +27,29 @@ export async function onRequestPost(context) {
 
     await jwt.authorize();
 
-    const firestore = google.firestore({
-      version: 'v1',
-      auth: jwt,
-    });
+    const projectId = env.FIREBASE_PROJECT_ID;
+    const databaseId = '(default)'; // Default Firestore database
+
+    // Construir la URL de la API de Firestore manualmente
+    const firestoreApiBaseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents`;
 
     // La colección es 'claves' según tu configuración inicial
-    const documentPath = `projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/claves/${clave}`;
+    const documentPath = `${firestoreApiBaseUrl}/claves/${clave}`;
 
     // Obtener el documento
-    const getRes = await firestore.projects.databases.documents.get({ // Changed from firestore.projects.databases.documents.get
-      name: documentPath,
+    const getRes = await fetch(documentPath, {
+      headers: {
+        'Authorization': `Bearer ${jwt.credentials.access_token}`,
+        'Content-Type': 'application/json',
+      },
     });
 
-    const docData = getRes.data.fields;
+    const getResJson = await getRes.json();
+
+    const docData = getResJson.fields;
     const isUsed = docData && docData.usada && docData.usada.booleanValue === true;
 
-    if (!docData) { // El documento no existe
+    if (!getRes.ok || !docData) { // El documento no existe o hubo un error
       return new Response(JSON.stringify({ success: false, error: 'Clave inválida.' }), {
         status: 404,
         headers: { 'Content-Type': 'application/json' },
@@ -62,17 +64,28 @@ export async function onRequestPost(context) {
     }
 
     // La clave existe y no ha sido utilizada, marcarla como utilizada
-    await firestore.projects.databases.documents.patch({
-      name: documentPath,
-      updateMask: { fieldPaths: ['usada', 'fechaUso'] },
-      currentDocument: { exists: true },
-      body: {
+    const patchUrl = `${documentPath}?updateMask.fieldPaths=usada&updateMask.fieldPaths=fechaUso`;
+    const patchRes = await fetch(patchUrl, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${jwt.credentials.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         fields: {
           usada: { booleanValue: true },
           fechaUso: { timestampValue: new Date().toISOString() },
         },
-      },
+      }),
     });
+
+    if (!patchRes.ok) {
+      console.error('ERROR al actualizar clave:', await patchRes.text());
+      return new Response(JSON.stringify({ success: false, error: 'Error al actualizar la clave.' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
