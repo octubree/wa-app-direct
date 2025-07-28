@@ -8,7 +8,8 @@
     "build": "npm install"
   },
   "dependencies": {
-    "googleapis": "^128.0.0"
+    "googleapis": "^128.0.0",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "wrangler": "^3.71.0"
