@@ -368,7 +368,7 @@
         function checkSavedLicense() {
             const savedKey = localStorage.getItem('gumroadLicenseKey');
             if (savedKey) {
-                verifyLicense(savedKey); // Re-verificar la clave guardada
+                unlockApp(savedKey);
             } else {
                 loginScreen.classList.remove('hidden');
                 appContent.classList.add('hidden');

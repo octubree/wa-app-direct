@@ -1,12 +1,16 @@
 {
-  "name": "whatsapp-direct",
+  "name": "whatsapp-direct-pruebas-backend",
   "version": "1.0.0",
-  "description": "App de prueba WhatsApp Directo",
-  "main": "index.js",
+  "description": "Backend para verificación de claves de WhatsApp Directo",
+  "main": "api/verificar-clave.js",
   "scripts": {
-    "build": "echo 'No build step required'"
+    "start": "node api/verificar-clave.js"
   },
-  "dependencies": {},
+  "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "node-fetch": "^2.6.1" 
+  }
 }
