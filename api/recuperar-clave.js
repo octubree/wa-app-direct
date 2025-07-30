@@ -11,6 +11,10 @@ const db = admin.firestore();
 // FUNCIÓN AUXILIAR PARA VERIFICAR LA SUSCRIPCIÓN EN GUMROAD
 async function verificarSuscripcionGumroad(email, productPermalink) {
   const GUMROAD_API_KEY = process.env.GUMROAD_API_KEY;
+  
+  // Log para depuración
+  console.log("Valor de GUMROAD_API_KEY:", GUMROAD_API_KEY ? "cargada" : "no cargada");
+
   if (!GUMROAD_API_KEY) {
     console.error('La variable de entorno GUMROAD_API_KEY no está configurada.');
     return { activa: false, error: 'Configuración del servidor incompleta.' };
@@ -20,7 +24,7 @@ async function verificarSuscripcionGumroad(email, productPermalink) {
     const url = `https://api.gumroad.com/v2/products/${productPermalink}/subscribers?email=${encodeURIComponent(email)}`;
     const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${GUMROAD_ACCESS_TOKEN}`
+        'Authorization': `Bearer ${GUMROAD_API_KEY}`
       }
     });
 
