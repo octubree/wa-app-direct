@@ -24,6 +24,9 @@
     
     .button-app { display: block; text-align: center; background-color: #28a745; color: white; text-decoration: none; border-radius: 8px; margin-top: 1rem; padding: 0.85rem; font-size: 1rem; font-weight: bold; }
     .button-app:hover { background-color: #218838; }
+
+    .button-compra { display: inline-block; text-align: center; background-color: #ff9800; color: white; text-decoration: none; border-radius: 8px; margin-top: 1rem; padding: 0.85rem; font-size: 1rem; font-weight: bold; border: none; cursor: pointer; }
+    .button-compra:hover { background-color: #f57c00; }
   </style>
 </head>
 <body>
@@ -51,6 +54,7 @@
       const mensaje = document.getElementById('mensaje');
       const btn = event.target;
       const resultadoContainer = document.getElementById('resultado-container');
+      const urlCompra = 'https://whatsappdirect.gumroad.com/l/gffgvj?wanted=true';
 
       if (!email) {
         mensaje.textContent = 'Por favor, ingresá un correo válido.';
@@ -58,10 +62,11 @@
         return;
       }
 
-      // Deshabilitar botón y mostrar estado de carga
+      // Limpiar mensajes anteriores y deshabilitar botón
       btn.disabled = true;
       btn.textContent = 'Consultando...';
-      mensaje.textContent = '';
+      mensaje.innerHTML = ''; // Usamos innerHTML para poder añadir el botón
+      mensaje.className = 'msg';
       resultadoContainer.style.display = 'none';
 
       try {
@@ -78,8 +83,20 @@
           document.getElementById('nuevaClave').value = data.nuevaClave;
           resultadoContainer.style.display = 'block';
         } else {
+          // Manejo de errores específicos
           mensaje.textContent = `❌ ${data.message}`;
           mensaje.className = 'msg error';
+
+          // Si la suscripción caducó, añadir el botón de compra
+          if (data.message === 'Tu suscripción ha caducado.') {
+            const botonCompra = document.createElement('a');
+            botonCompra.href = urlCompra;
+            botonCompra.target = '_blank';
+            botonCompra.className = 'button-compra';
+            botonCompra.textContent = 'Comprar nueva licencia';
+            mensaje.appendChild(document.createElement('br'));
+            mensaje.appendChild(botonCompra);
+          }
         }
       } catch (err) {
         mensaje.textContent = 'Error de conexión. Por favor, intentalo más tarde.';
@@ -93,8 +110,6 @@
 
     function copiarClave(copyButton) {
       const claveInput = document.getElementById('nuevaClave');
-      
-      // Técnica moderna para copiar al portapapeles
       navigator.clipboard.writeText(claveInput.value).then(() => {
         copyButton.textContent = '¡Copiado!';
         setTimeout(() => {
@@ -102,7 +117,6 @@
         }, 2000);
       }).catch(err => {
         console.error('Error al copiar la clave: ', err);
-        // Fallback para navegadores más antiguos
         claveInput.select();
         document.execCommand('copy');
         copyButton.textContent = '¡Copiado!';
