@@ -3,21 +3,21 @@
       xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <!-- Main Landing Page -->
 <url>
-  <loc>https://whats-app-directo.online/</loc>
+  <loc>https://wa-wa.site/</loc>
   <lastmod>2025-07-18</lastmod>
   <changefreq>weekly</changefreq>
   <priority>1.00</priority>
 </url>
 <!-- Application Page -->
 <url>
-  <loc>https://whats-app-directo.online/app/</loc>
+  <loc>https://wa-wa.site/app/</loc>
   <lastmod>2025-07-18</lastmod>
   <changefreq>weekly</changefreq>
   <priority>0.90</priority>
 </url>
 <!-- Recovery Page -->
 <url>
-  <loc>https://whats-app-directo.online/recuperar.html</loc>
+  <loc>https://wa-wa.site/recuperar.html</loc>
   <lastmod>2025-07-18</lastmod>
   <changefreq>monthly</changefreq>
   <priority>0.50</priority>
