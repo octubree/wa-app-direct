@@ -1,103 +1,96 @@
+
 import admin from 'firebase-admin';
-import { v4 as uuidv4 } from 'uuid';
 
+// --- INICIALIZACIÓN DE FIREBASE ADMIN ---
 if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-}
-
-const db = admin.firestore();
-
-// FUNCIÓN AUXILIAR PARA VERIFICAR LA SUSCRIPCIÓN EN GUMROAD
-async function verificarSuscripcionGumroad(email, productPermalink) {
-  const GUMROAD_API_KEY = process.env.GUMROAD_API_KEY;
-  
-  // Log para depuración
-  console.log("Valor de GUMROAD_API_KEY:", GUMROAD_API_KEY ? "cargada" : "no cargada");
-
-  if (!GUMROAD_API_KEY) {
-    console.error('La variable de entorno GUMROAD_API_KEY no está configurada.');
-    return { activa: false, error: 'Configuración del servidor incompleta.' };
-  }
-
   try {
-    const url = `https://api.gumroad.com/v2/products/${productPermalink}/subscribers?email=${encodeURIComponent(email)}`;
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${GUMROAD_API_KEY}`
-      }
-    });
-
-    if (!response.ok) {
-      console.error(`Error de Gumroad API: ${response.statusText}`);
-      return { activa: false, error: 'No se pudo contactar con el servicio de licencias.' };
-    }
-
-    const data = await response.json();
-
-    if (data.success && data.subscribers.length > 0) {
-      const suscripcion = data.subscribers[0];
-      // Comprueba si la suscripción fue cancelada y si la fecha de fin ya pasó.
-      const haTerminado = suscripcion.subscription_ended_at && new Date(suscripcion.subscription_ended_at) < new Date();
-      const estaCancelada = suscripcion.subscription_cancelled_at && new Date(suscripcion.subscription_cancelled_at) < new Date();
-      
-      if (haTerminado || estaCancelada) {
-        return { activa: false, message: 'Tu suscripción ha caducado.' };
-      }
-      // Si no ha terminado o no ha sido cancelada (o la fecha de cancelación aún no llega), está activa.
-      return { activa: true };
-    } else {
-      // No se encontró una suscripción para ese email y producto.
-      return { activa: false, message: 'No se encontró una suscripción activa para este correo.' };
-    }
-
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
   } catch (error) {
-    console.error('Error al verificar la suscripción en Gumroad:', error);
-    return { activa: false, error: 'Error interno al verificar la suscripción.' };
+    console.error('Error al inicializar Firebase Admin:', error);
   }
 }
 
+// --- CONSTANTES ---
+const LEMON_API_KEY = process.env.LEMON_API_KEY;
+const VARIANT_ID = '660885'; // ID de la variante de tu producto en Lemon Squeezy
+
+// --- FUNCIÓN AUXILIAR PARA LLAMADAS A LA API DE LEMON SQUEEZY ---
+async function lemonSqueezyRequest(endpoint) {
+  const url = `https://api.lemonsqueezy.com/v1/${endpoint}`;
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${LEMON_API_KEY}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    }
+  });
+  if (!response.ok) {
+    console.error(`Error en la API de Lemon Squeezy (${url}): ${response.statusText}`);
+    throw new Error('No se pudo contactar con el servicio de licencias.');
+  }
+  return response.json();
+}
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ message: 'Método no permitido' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Método no permitido' });
+  }
 
   const { email } = req.body;
-  if (!email) return res.status(400).json({ message: 'Email requerido' });
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ success: false, error: 'Email requerido' });
+  }
 
-  // --- PRODUCT PERMALINK DE GUMROAD ---
-  const PRODUCT_PERMALINK = 'gffgvj'; 
+  if (!LEMON_API_KEY) {
+    console.error('La variable de entorno LEMON_API_KEY no está configurada.');
+    return res.status(500).json({ success: false, error: 'Configuración del servidor incompleta.' });
+  }
 
   try {
-    // 1. Verificar si el email existe en nuestra base de datos (como antes)
-    const clavesRef = db.collection('claves');
-    const snapshot = await clavesRef.where('email', '==', email).limit(1).get();
+    // 1. Buscar al cliente por email
+    const customers = await lemonSqueezyRequest(`customers?filter[email]=${encodeURIComponent(email)}`);
+    if (!customers.data || customers.data.length === 0) {
+      return res.status(404).json({ success: false, error: 'No se encontró ninguna compra asociada a ese correo.' });
+    }
+    const customerId = customers.data[0].id;
 
-    if (snapshot.empty) {
-      return res.status(404).json({ success: false, message: 'No se encontró ninguna compra asociada a ese correo.' });
+    // 2. Buscar las órdenes de ese cliente
+    const orders = await lemonSqueezyRequest(`orders?filter[customer_id]=${customerId}`);
+    if (!orders.data || orders.data.length === 0) {
+      return res.status(404).json({ success: false, error: 'No se encontraron órdenes para este cliente.' });
     }
 
-    // 2. ¡NUEVO! Verificar el estado de la suscripción en Gumroad
-    const estadoSuscripcion = await verificarSuscripcionGumroad(email, PRODUCT_PERMALINK);
-
-    if (!estadoSuscripcion.activa) {
-      // Si la suscripción no está activa, denegar la recuperación.
-      const message = estadoSuscripcion.message || estadoSuscripcion.error || 'Tu suscripción no se encuentra activa.';
-      return res.status(403).json({ success: false, message: message });
+    // 3. Encontrar la orden pagada que contenga nuestro producto
+    let orderId = null;
+    for (const order of orders.data) {
+      if (order.attributes.status === 'paid') {
+        const orderItems = await lemonSqueezyRequest(`order-items?filter[order_id]=${order.id}`);
+        const foundItem = orderItems.data.find(item => item.attributes.variant_id.toString() === VARIANT_ID);
+        if (foundItem) {
+          orderId = order.id;
+          break;
+        }
+      }
     }
 
-    // 3. Si la suscripción está activa, generar una nueva clave (como antes)
-    const nuevaClave = uuidv4().split('-')[0].toUpperCase();
-    await clavesRef.doc(nuevaClave).set({
-      usada: false,
-      email: email,
-      recuperada: true,
-      generadaEn: admin.firestore.FieldValue.serverTimestamp()
-    });
+    if (!orderId) {
+      return res.status(404).json({ success: false, error: 'No se encontró una compra válida y pagada para este producto.' });
+    }
 
-    return res.status(200).json({ success: true, nuevaClave });
+    // 4. Obtener la clave de licencia de esa orden
+    const licenses = await lemonSqueezyRequest(`license-keys?filter[order_id]=${orderId}`);
+    if (!licenses.data || licenses.data.length === 0) {
+      return res.status(404).json({ success: false, error: 'No se encontró una clave de licencia para tu compra.' });
+    }
+
+    const licenseKey = licenses.data[0].attributes.key;
+
+    // 5. Devolver la clave de licencia original
+    return res.status(200).json({ success: true, clave: licenseKey });
 
   } catch (error) {
-    console.error('Error al recuperar clave:', error);
-    return res.status(500).json({ success: false, message: 'Error del servidor al intentar recuperar la clave.' });
+    console.error('Error al recuperar la clave:', error);
+    return res.status(500).json({ success: false, error: error.message || 'Error del servidor al intentar recuperar la clave.' });
   }
 }

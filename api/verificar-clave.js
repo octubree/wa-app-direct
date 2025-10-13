@@ -1,12 +1,11 @@
+
 import admin from 'firebase-admin';
 
 // --- CONFIGURACIÓN DE SEGURIDAD: LÍMITE DE INTENTOS (Rate Limiting) ---
-// Mapa en memoria para rastrear los intentos por IP. Se reinicia con la función.
 const rateLimitMap = new Map();
-// Límite: Permitir 1 intento cada 5 segundos por IP.
-const RATE_LIMIT_WINDOW_MS = 5000; 
+const RATE_LIMIT_WINDOW_MS = 5000; // Permitir 1 intento cada 5 segundos por IP.
 
-// Inicialización de Firebase Admin
+// --- INICIALIZACIÓN DE FIREBASE ADMIN ---
 if (!admin.apps.length) {
   try {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
@@ -15,8 +14,20 @@ if (!admin.apps.length) {
     console.error('Error al inicializar Firebase Admin:', error);
   }
 }
-
 const db = admin.firestore();
+
+// --- FUNCIÓN DE VERIFICACIÓN DE LICENCIA EN LEMON SQUEEZY ---
+async function validateLicenseWithLemonSqueezy(licenseKey) {
+  const response = await fetch('https://api.lemonsqueezy.com/v1/licenses/validate', {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ license_key: licenseKey })
+  });
+  return response.json();
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -41,26 +52,41 @@ export default async function handler(req, res) {
     return res.status(400).json({ success: false, error: 'La clave proporcionada es inválida.' });
   }
 
-  const claveLimpia = clave.trim().toUpperCase();
+  const claveLimpia = clave.trim();
 
   try {
+    // 1. Validar la clave con la API de Lemon Squeezy
+    const lemonResponse = await validateLicenseWithLemonSqueezy(claveLimpia);
+
+    if (!lemonResponse.valid) {
+      console.warn(`Intento de uso de clave inválida según Lemon Squeezy: '${claveLimpia}'`);
+      return res.status(404).json({ success: false, error: lemonResponse.error || 'Clave de licencia inválida.' });
+    }
+
+    // Si la clave es válida, procedemos a verificar si ya fue "reclamada" en nuestra DB
     const claveRef = db.collection('claves').doc(claveLimpia);
     const doc = await claveRef.get();
 
-    if (doc.exists && doc.data().usada !== true) {
-      await claveRef.update({ 
-        usada: true,
-        fechaUso: admin.firestore.FieldValue.serverTimestamp()
-      });
-      
-      console.log(`Clave '${claveLimpia}' verificada y marcada como usada.`);
-      // Limpiar el registro de intentos para esta IP tras un éxito
+    if (doc.exists) {
+      // La clave es válida pero ya fue activada aquí. Permitimos el acceso.
+      // Esto permite que un usuario que ya activó la app pueda seguir usándola.
+      console.log(`Clave '${claveLimpia}' verificada (ya existía en DB).`);
       rateLimitMap.delete(ip);
       return res.status(200).json({ success: true });
     } else {
-      console.warn(`Intento de uso de clave inválida o ya usada: '${claveLimpia}'`);
-      return res.status(404).json({ success: false, error: 'Clave inválida o ya utilizada.' });
+      // La clave es válida y es la primera vez que se activa en nuestra app.
+      // La guardamos en Firestore para marcarla como "reclamada".
+      await claveRef.set({
+        activada: true,
+        fechaActivacion: admin.firestore.FieldValue.serverTimestamp(),
+        meta: lemonResponse.meta // Guardamos metadatos de Lemon Squeezy
+      });
+      
+      console.log(`Clave '${claveLimpia}' verificada y guardada en Firestore.`);
+      rateLimitMap.delete(ip);
+      return res.status(200).json({ success: true });
     }
+
   } catch (error) {
     console.error(`Error del servidor al verificar la clave '${claveLimpia}':`, error);
     return res.status(500).json({ success: false, error: 'Error del servidor al verificar la clave.' });

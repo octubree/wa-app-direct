@@ -59,7 +59,7 @@
       const mensaje = document.getElementById('mensaje');
       const btn = event.target;
       const resultadoContainer = document.getElementById('resultado-container');
-      const urlCompra = 'https://shopsales.gumroad.com/l/gffgvj';
+      const urlCompra = 'https://facal.lemonsqueezy.com/buy/a174bcd3-ddc2-46d5-92c7-69783c805215';
 
       if (!email) {
         mensaje.textContent = 'Por favor, ingresá un correo válido.';
@@ -70,7 +70,7 @@
       // Limpiar mensajes anteriores y deshabilitar botón
       btn.disabled = true;
       btn.textContent = 'Consultando...';
-      mensaje.innerHTML = ''; // Usamos innerHTML para poder añadir el botón
+      mensaje.textContent = '';
       mensaje.className = 'msg';
       resultadoContainer.style.display = 'none';
 
@@ -83,17 +83,18 @@
 
         const data = await res.json();
         if (data.success) {
-          mensaje.textContent = '✅ ¡Éxito! Hemos generado una nueva clave para vos.';
+          mensaje.textContent = '✅ ¡Éxito! Hemos encontrado tu clave de acceso.';
           mensaje.className = 'msg success';
-          document.getElementById('nuevaClave').value = data.nuevaClave;
+          document.getElementById('nuevaClave').value = data.clave; // Actualizado de nuevaClave a clave
           resultadoContainer.style.display = 'block';
         } else {
-          // Manejo de errores específicos
-          mensaje.textContent = `❌ ${data.message}`;
+          // Manejo de errores genérico y robusto
+          let errorText = data.error || 'No se pudo recuperar tu clave.';
+          mensaje.innerHTML = `❌ ${errorText}`;
           mensaje.className = 'msg error';
 
-          // Si la suscripción caducó, añadir el botón de compra
-          if (data.message === 'Tu suscripción ha caducado.') {
+          // Ofrecer comprar una nueva si no se encuentra la compra
+          if (res.status === 404) {
             const botonCompra = document.createElement('a');
             botonCompra.href = urlCompra;
             botonCompra.target = '_blank';

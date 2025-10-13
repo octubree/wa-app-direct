@@ -1,0 +1,135 @@
+Excelente — ahora sí tengo el panorama completo 🔍.
+Tu sistema actual con Gumroad + Firebase está muy bien estructurado: validación segura, control de uso y un mecanismo de recuperación de clave vinculado al correo de compra, lo cual es una gran idea.
+Vamos a ver cómo trasladar eso a Lemon Squeezy sin perder esa funcionalidad.
+
+🧩 1. Qué estás haciendo actualmente
+
+Basado en tus tres archivos:
+
+verificar-clave.js → valida la licencia (única, de un solo uso) en Firestore
+
+verificar-clave
+
+.
+
+recuperar-clave.js → revisa el correo en Firestore y en la API de Gumroad; si la suscripción está activa, genera una nueva clave y la guarda
+
+recuperar-clave
+
+.
+
+status.js → chequea modo mantenimiento, sin relación directa con licencias
+
+status
+
+.
+
+Tu flujo completo:
+
+El usuario compra → Gumroad envía la licencia y guarda su correo.
+
+Si el usuario pierde la licencia, puede recuperarla ingresando el mismo email que usó en Gumroad.
+
+Se valida en la API de Gumroad si su suscripción sigue activa.
+
+Si está activa, generas una nueva clave en Firebase.
+
+Perfecto.
+
+⚙️ 2. Cómo migrar esa lógica a Lemon Squeezy
+
+Lemon Squeezy ofrece una API similar, y podés hacer exactamente lo mismo, solo que cambiando los endpoints.
+
+🔹 API equivalente
+
+Gumroad → Lemon Squeezy:
+
+Acción	Endpoint Gumroad	Endpoint Lemon Squeezy
+Verificar licencia	/v2/licenses/verify	/v1/licenses/validate-key
+Obtener suscripciones por email	/v2/products/:id/subscribers?email=	/v1/customers?filter[email]= + email
+📧 3. Recuperación por email en Lemon Squeezy
+
+Sí, también podés hacerlo, pero con una pequeña diferencia:
+Lemon Squeezy no ofrece directamente una búsqueda “por producto y email” como Gumroad, sino por cliente o por orden.
+
+Ejemplo con API pública:
+const response = await fetch(`https://api.lemonsqueezy.com/v1/customers?filter[email]=${email}`, {
+  headers: {
+    'Authorization': `Bearer ${process.env.LEMON_API_KEY}`,
+    'Accept': 'application/json'
+  }
+});
+const data = await response.json();
+
+
+El resultado te devuelve los clientes que compraron algo con ese correo.
+Cada uno tiene un customer_id que podés usar para listar sus órdenes o licencias.
+
+Luego consultás las licencias:
+
+const licenses = await fetch(`https://api.lemonsqueezy.com/v1/licenses?filter[customer_id]=${customerId}`, {
+  headers: {
+    'Authorization': `Bearer ${process.env.LEMON_API_KEY}`,
+    'Accept': 'application/json'
+  }
+});
+
+
+Si existe una licencia activa, generás una nueva (como ya hacés en recuperar-clave.js).
+
+🔐 4. Cómo quedaría tu recuperar-clave.js adaptado
+
+Simplificado, sería algo así:
+
+async function verificarCompraLemon(email) {
+  const API_KEY = process.env.LEMON_API_KEY;
+
+  // Buscar cliente por email
+  const resCliente = await fetch(`https://api.lemonsqueezy.com/v1/customers?filter[email]=${encodeURIComponent(email)}`, {
+    headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
+  });
+  const dataCliente = await resCliente.json();
+
+  if (!dataCliente.data || dataCliente.data.length === 0)
+    return { activa: false, message: 'No se encontró ninguna compra con ese correo.' };
+
+  const customerId = dataCliente.data[0].id;
+
+  // Verificar si hay una licencia activa
+  const resLic = await fetch(`https://api.lemonsqueezy.com/v1/licenses?filter[customer_id]=${customerId}`, {
+    headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
+  });
+  const dataLic = await resLic.json();
+
+  if (dataLic.data && dataLic.data.length > 0) {
+    const lic = dataLic.data[0].attributes;
+    if (lic.status === 'active') return { activa: true };
+  }
+
+  return { activa: false, message: 'No se encontró una licencia activa.' };
+}
+
+
+Y luego en tu handler mantendrías igual la parte de:
+
+generar nueva clave con uuidv4
+
+guardar en Firestore
+
+devolverla al usuario
+
+✅ 5. Ventajas adicionales con Lemon Squeezy
+
+Puedes consultar todas las licencias y ver quién las compró.
+
+Si el cliente cambia de dispositivo, puedes revocar o regenerar licencias directamente desde el panel.
+
+Los clientes reciben automáticamente un correo con su clave, sin necesidad de implementar envíos manuales.
+
+🧠 En resumen
+Función	Gumroad	Lemon Squeezy
+Generar licencias	Automático	Automático (igual)
+Validar licencias	/licenses/verify	/licenses/validate-key
+Buscar por email	/subscribers?email=	/customers?filter[email]=
+Reasignar o regenerar	Manual	Panel + API
+API Key	GUMROAD_API_KEY	LEMON_API_KEY
