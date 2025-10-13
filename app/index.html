@@ -257,6 +257,14 @@
         let deferredPrompt = null;
 
         function initializeInstallButton() {
+            // --- NUEVO: Ocultar en PC ---
+            // Si el user agent no indica que es un dispositivo móvil, ocultamos toda la caja y detenemos la función.
+            const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+            if (!isMobile) {
+                installCta.style.display = 'none';
+                return;
+            }
+
             // 1. Comprobar si la app ya está instalada (máxima prioridad)
             if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
                 installCtaText.innerHTML = "✅ App Instalada";
