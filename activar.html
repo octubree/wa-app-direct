@@ -1,0 +1,65 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activación de Clave - WhatsApp Directo</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f4f5f7; color: #333; text-align: center; padding: 1rem; }
+    .container { max-width: 500px; width: 100%; background: white; padding: 2.5rem; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+    h1 { margin-top: 0; color: #111; font-size: 1.8rem; }
+    p { color: #666; margin-bottom: 1.5rem; }
+    .license-key { font-size: 2rem; font-weight: bold; color: #007bff; background-color: #f0f5ff; padding: 1rem; border-radius: 8px; margin-bottom: 2rem; word-break: break-all; }
+    .button-group { display: flex; flex-direction: column; gap: 1rem; }
+    .button { display: block; text-decoration: none; color: white; padding: 1rem; font-size: 1.2rem; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; transition: background-color 0.2s, transform 0.2s; }
+    .button-copy { background-color: #007bff; }
+    .button-copy:hover { background-color: #0056b3; }
+    .button-app { background-color: #28a745; }
+    .button-app:hover { background-color: #218838; }
+    .button:active { transform: scale(0.98); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>¡Gracias por tu compra!</h1>
+    <p>Usa la siguiente clave para activar tu acceso a WhatsApp Directo.</p>
+    <div id="license-key" class="license-key">Cargando...</div>
+    <div class="button-group">
+      <button id="copy-button" class="button button-copy">Copiar Clave</button>
+      <a href="/app/index.html" class="button button-app">Ir a la App para Activar</a>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      const licenseKeyDiv = document.getElementById('license-key');
+      const copyButton = document.getElementById('copy-button');
+      let licenseKey = 'CLAVE-NO-ENCONTRADA';
+
+      // 1. Extraer la clave de la URL
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('license_key')) {
+        licenseKey = params.get('license_key');
+        licenseKeyDiv.textContent = licenseKey;
+      } else {
+        licenseKeyDiv.textContent = licenseKey;
+        licenseKeyDiv.style.color = '#dc3545'; // Color de error
+      }
+
+      // 2. Funcionalidad del botón de copiar
+      copyButton.addEventListener('click', () => {
+        navigator.clipboard.writeText(licenseKey).then(() => {
+          copyButton.textContent = '¡Copiado!';
+          setTimeout(() => {
+            copyButton.textContent = 'Copiar Clave';
+          }, 2000);
+        }).catch(err => {
+          console.error('Error al copiar la clave: ', err);
+          copyButton.textContent = 'Error al copiar';
+        });
+      });
+    };
+  </script>
+</body>
+</html>
