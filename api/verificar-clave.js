@@ -16,15 +16,17 @@ if (!admin.apps.length) {
 }
 const db = admin.firestore();
 
-// --- FUNCIÓN DE VERIFICACIÓN DE LICENCIA EN LEMON SQUEEZY ---
-async function validateLicenseWithLemonSqueezy(licenseKey) {
-  const response = await fetch('https://api.lemonsqueezy.com/v1/licenses/validate', {
+// --- FUNCIÓN DE VERIFICACIÓN DE LICENCIA EN GUMROAD ---
+async function validateLicenseWithGumroad(licenseKey) {
+  const response = await fetch('https://api.gumroad.com/v2/licenses/verify', {
     method: 'POST',
     headers: {
-      'Accept': 'application/json',
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ license_key: licenseKey })
+    body: JSON.stringify({ 
+      product_permalink: process.env.GUMROAD_PRODUCT_PERMALINK,
+      license_key: licenseKey 
+    })
   });
   return response.json();
 }
@@ -55,12 +57,12 @@ export default async function handler(req, res) {
   const claveLimpia = clave.trim();
 
   try {
-    // 1. Validar la clave con la API de Lemon Squeezy
-    const lemonResponse = await validateLicenseWithLemonSqueezy(claveLimpia);
+    // 1. Validar la clave con la API de Gumroad
+    const gumroadResponse = await validateLicenseWithGumroad(claveLimpia);
 
-    if (!lemonResponse.valid) {
-      console.warn(`Intento de uso de clave inválida según Lemon Squeezy: '${claveLimpia}'`);
-      return res.status(404).json({ success: false, error: lemonResponse.error || 'Clave de licencia inválida.' });
+    if (!gumroadResponse.success) {
+      console.warn(`Intento de uso de clave inválida según Gumroad: '${claveLimpia}'`);
+      return res.status(404).json({ success: false, error: gumroadResponse.message || 'Clave de licencia inválida.' });
     }
 
     // Si la clave es válida, procedemos a verificar si ya fue "reclamada" en nuestra DB
@@ -79,7 +81,7 @@ export default async function handler(req, res) {
       await claveRef.set({
         activada: true,
         fechaActivacion: admin.firestore.FieldValue.serverTimestamp(),
-        meta: lemonResponse.meta // Guardamos metadatos de Lemon Squeezy
+        purchase: gumroadResponse.purchase // Guardamos los datos de la compra de Gumroad
       });
       
       console.log(`Clave '${claveLimpia}' verificada y guardada en Firestore.`);
