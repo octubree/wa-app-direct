@@ -24,7 +24,7 @@ async function validateLicenseWithGumroad(licenseKey) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({ 
-      product_permalink: process.env.GUMROAD_PRODUCT_PERMALINK,
+      product_id: process.env.GUMROAD_PRODUCT_ID,
       license_key: licenseKey 
     })
   });
