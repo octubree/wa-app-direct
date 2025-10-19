@@ -1,96 +1,82 @@
 
-import admin from 'firebase-admin';
+// Versión segura de verificar-clave.js
+// Valida la licencia contra la API de Gumroad, incluyendo chequeos de fraude y límite de usos.
 
-// --- CONFIGURACIÓN DE SEGURIDAD: LÍMITE DE INTENTOS (Rate Limiting) ---
-const rateLimitMap = new Map();
-const RATE_LIMIT_WINDOW_MS = 5000; // Permitir 1 intento cada 5 segundos por IP.
+const USAGE_LIMIT = 10; // Límite generoso de activaciones por clave para evitar abuso.
 
-// --- INICIALIZACIÓN DE FIREBASE ADMIN ---
-if (!admin.apps.length) {
-  try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-  } catch (error) {
-    console.error('Error al inicializar Firebase Admin:', error);
-  }
-}
-const db = admin.firestore();
-
-// --- FUNCIÓN DE VERIFICACIÓN DE LICENCIA EN GUMROAD ---
+// --- FUNCIÓN AUXILIAR PARA LLAMAR A LA API DE GUMROAD ---
 async function validateLicenseWithGumroad(licenseKey) {
+  const GUMROAD_PRODUCT_PERMALINK = process.env.GUMROAD_PRODUCT_PERMALINK;
+  const GUMROAD_API_KEY = process.env.GUMROAD_API_KEY;
+
+  if (!GUMROAD_PRODUCT_PERMALINK || !GUMROAD_API_KEY) {
+    console.error('Error: Variables de entorno de Gumroad no configuradas.');
+    throw new Error('Configuración del servidor incompleta.');
+  }
+
   const response = await fetch('https://api.gumroad.com/v2/licenses/verify', {
     method: 'POST',
     headers: {
+      'Authorization': `Bearer ${GUMROAD_API_KEY}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ 
-      product_id: process.env.GUMROAD_PRODUCT_ID,
-      license_key: licenseKey 
+    body: JSON.stringify({
+      product_permalink: GUMROAD_PRODUCT_PERMALINK,
+      license_key: licenseKey.trim()
     })
   });
+
   return response.json();
 }
 
+// --- HANDLER PRINCIPAL DE LA API ---
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Método no permitido' });
   }
 
-  // --- APLICACIÓN DEL LÍMITE DE INTENTOS ---
-  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
-  const now = Date.now();
-  const lastAttempt = rateLimitMap.get(ip);
-
-  if (lastAttempt && (now - lastAttempt) < RATE_LIMIT_WINDOW_MS) {
-    console.warn(`Rate limit excedido para la IP: ${ip}`);
-    return res.status(429).json({ success: false, error: 'Demasiados intentos. Por favor, espera unos segundos.' });
-  }
-  rateLimitMap.set(ip, now);
-
-  // --- LÓGICA DE VERIFICACIÓN DE CLAVE ---
   const { clave } = req.body;
 
   if (!clave || typeof clave !== 'string' || clave.trim() === '') {
     return res.status(400).json({ success: false, error: 'La clave proporcionada es inválida.' });
   }
 
-  const claveLimpia = clave.trim();
-
   try {
-    // 1. Validar la clave con la API de Gumroad
-    const gumroadResponse = await validateLicenseWithGumroad(claveLimpia);
+    const gumroadResponse = await validateLicenseWithGumroad(clave);
 
+    // 1. Chequeo básico de validez de la clave
     if (!gumroadResponse.success) {
-      console.warn(`Intento de uso de clave inválida según Gumroad: '${claveLimpia}'`);
-      return res.status(404).json({ success: false, error: gumroadResponse.message || 'Clave de licencia inválida.' });
+      console.warn(`Intento de clave inválida: ${clave}`);
+      return res.status(404).json({ success: false, error: gumroadResponse.message || 'La clave de licencia no es válida.' });
     }
 
-    // Si la clave es válida, procedemos a verificar si ya fue "reclamada" en nuestra DB
-    const claveRef = db.collection('claves').doc(claveLimpia);
-    const doc = await claveRef.get();
+    // --- VALIDACIONES DE SEGURIDAD ADICIONALES ---
+    const purchase = gumroadResponse.purchase;
 
-    if (doc.exists) {
-      // La clave es válida pero ya fue activada aquí. Permitimos el acceso.
-      // Esto permite que un usuario que ya activó la app pueda seguir usándola.
-      console.log(`Clave '${claveLimpia}' verificada (ya existía en DB).`);
-      rateLimitMap.delete(ip);
-      return res.status(200).json({ success: true });
-    } else {
-      // La clave es válida y es la primera vez que se activa en nuestra app.
-      // La guardamos en Firestore para marcarla como "reclamada".
-      await claveRef.set({
-        activada: true,
-        fechaActivacion: admin.firestore.FieldValue.serverTimestamp(),
-        purchase: gumroadResponse.purchase // Guardamos los datos de la compra de Gumroad
-      });
-      
-      console.log(`Clave '${claveLimpia}' verificada y guardada en Firestore.`);
-      rateLimitMap.delete(ip);
-      return res.status(200).json({ success: true });
+    // 2. Chequeo de reembolsos y contracargos (chargebacks)
+    if (purchase.refunded || purchase.chargebacked) {
+      console.warn(`Acceso denegado (reembolso/contracargo) para clave: ${clave.substring(0, 8)}...`);
+      return res.status(403).json({ success: false, error: 'Esta licencia ya no es válida.' });
     }
+
+    // 3. Chequeo de estado de suscripción (si aplica)
+    if (purchase.subscription_cancelled_at || purchase.subscription_failed_at) {
+      console.warn(`Acceso denegado (suscripción inactiva) para clave: ${clave.substring(0, 8)}...`);
+      return res.status(403).json({ success: false, error: 'La suscripción de esta licencia ya no está activa.' });
+    }
+
+    // 4. Chequeo de límite de usos para evitar abuso
+    if (purchase.uses >= USAGE_LIMIT) {
+      console.warn(`Acceso denegado (límite de usos) para clave: ${clave.substring(0, 8)}...`);
+      return res.status(429).json({ success: false, error: `Límite de ${USAGE_LIMIT} activaciones excedido.` });
+    }
+
+    // --- ACCESO CONCEDIDO ---
+    console.log(`Clave verificada exitosamente (usos: ${purchase.uses + 1}/${USAGE_LIMIT}): ${clave.substring(0, 8)}...`);
+    return res.status(200).json({ success: true, message: 'Clave válida.' });
 
   } catch (error) {
-    console.error(`Error del servidor al verificar la clave '${claveLimpia}':`, error);
-    return res.status(500).json({ success: false, error: 'Error del servidor al verificar la clave.' });
+    console.error(`Error del servidor al verificar clave:`, error);
+    return res.status(500).json({ success: false, error: 'Error del servidor al contactar el servicio de licencias.' });
   }
 }
