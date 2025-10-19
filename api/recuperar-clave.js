@@ -42,11 +42,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ success: false, error: 'Email requerido' });
   }
 
-  if (!LEMON_API_KEY) {
-    console.error('La variable de entorno LEMON_API_KEY no está configurada.');
-    return res.status(500).json({ success: false, error: 'Configuración del servidor incompleta.' });
-  }
-
   try {
     // 1. Validar que las variables de entorno de Gumroad estén configuradas
     if (!GUMROAD_API_KEY || !GUMROAD_PRODUCT_PERMALINK) {
